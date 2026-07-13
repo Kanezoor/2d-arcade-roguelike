@@ -19,6 +19,7 @@ const player = {
   speed: 1,
   dx: 0,
   dy: 0,
+  doubleShot: false,
 };
 
 
@@ -110,7 +111,24 @@ function shoot() {
   const angle = Math.atan2(mouse.y - playerCenterY, mouse.x - playerCenterX);
   const speed = 10;
 
-  const velocity = {
+  if (player.doubleShot) {
+    const angleSpread = 0.15;
+    const angles = [angle - angleSpread, angle + angleSpread];
+
+    angles.forEach(angle => {
+      projectiles.push({
+        x: playerCenterX,
+        y: playerCenterY,
+        radius: 5,
+        color: 'red',
+        velocity: {
+          x: Math.cos(angle) * speed,
+          y: Math.sin(angle) * speed,
+        }
+      });
+    });
+  } else {
+    const velocity = {
     x: Math.cos(angle) * speed,
     y: Math.sin(angle) * speed,
   }
@@ -122,6 +140,7 @@ function shoot() {
     color: 'red',
     velocity: velocity,
   });
+  }
 }
 
 // Spawns enemies outside of a designated safe zone around the player
@@ -309,7 +328,7 @@ function update() {
           const targetChange = (e.maxHealth === 6) ? 0.45 : 0.25;
 
           if (dropChance < targetChange) {
-            const types = ['heart', 'firerate', 'speed'];
+            const types = ['heart', 'firerate', 'speed', 'doubleshot'];
             const chosenType = types[Math.floor(Math.random() * types.length)];
 
             pickups.push({
@@ -361,6 +380,9 @@ function update() {
       } else if (pick.type === 'speed') {
         player.speed = Math.min(5, player.speed + 0.2);
         spawnFloatingText(player.x + player.width / 2, player.y, '+0,2 Speed', 'lime');
+      } else if (pick.type === 'doubleshot'){
+        player.doubleShot = true;
+        spawnFloatingText(player.x + player.width / 2, player.y, 'Double Shot', 'orange');
       }
 
       pickups.splice(i, 1);
@@ -483,7 +505,7 @@ function draw() {
 
     ctx.beginPath();
     ctx.arc(pick.x, finalY, pick.radius + 3, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillStyle = 'rgba(236, 69, 214, 0.3)';
     ctx.fill();
 
     ctx.beginPath();
@@ -495,6 +517,8 @@ function draw() {
       ctx.fillStyle = 'cyan';
     } else if (pick.type === 'speed') {
       ctx.fillStyle = '#33ff33'
+    } else if (pick.type === 'doubleshot') {
+      ctx.fillStyle = 'orange';
     }
     ctx.fill();
 
@@ -597,6 +621,7 @@ function resetGame() {
   player.y = canvas.height / 2;
   weapon.fireRate = 300;
   score = 0;
+  player.doubleShot = false;
 
   enemies.length = 0;
   particles.length = 0;
