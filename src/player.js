@@ -1,3 +1,5 @@
+import { showGameOverScreen } from "./ui.js";
+
 export function createPlayer(scene) {
   scene.player = scene.physics.add.sprite(400, 300, "playerSquare");
   scene.player.body.setCollideWorldBounds(true);
@@ -69,34 +71,42 @@ export function updatePlayer(scene) {
 
 export function damagePlayer(scene, player, enemy) {
 
-    if (scene.time.now - scene.lastDamageTime < scene.damageCooldown) {
-        return;
-    }
+  if (scene.time.now - scene.lastDamageTime < scene.damageCooldown) {
+    return;
+  }
 
-    scene.lastDamageTime = scene.time.now;
+  scene.lastDamageTime = scene.time.now;
 
-    scene.playerHealth -= enemy.damageValue;
+  scene.playerHealth -= enemy.damageValue;
 
-    const angle = Phaser.Math.Angle.Between(
-        enemy.x,
-        enemy.y,
-        player.x,
-        player.y
-    );
+  const angle = Phaser.Math.Angle.Between(
+    enemy.x,
+    enemy.y,
+    player.x,
+    player.y
+  );
 
-    player.body.setVelocity(
-        Math.cos(angle) * 400,
-        Math.sin(angle) * 400
-    );
+  player.body.setVelocity(
+    Math.cos(angle) * 400,
+    Math.sin(angle) * 400
+  );
 
-    if (scene.playerHealth <= 0) {
+  const enemyKnockback = 3000;
+    
+  enemy.kbX += -Math.cos(angle) * enemyKnockback;
+  enemy.kbY += -Math.sin(angle) * enemyKnockback;
 
-        scene.playerHealth = 0;
-        scene.isGameOver = true;
+  if (scene.playerHealth <= 0) {
+    scene.playerHealth = 0;
+    scene.isGameOver = true;
 
-        player.setTint(0xff0000);
+    player.setTint(0xff0000);
 
-    }
+    scene.physics.pause();
+    return true;
+    // showGameOverScreen(scene);
+  }
 
+  return false;
 }
 

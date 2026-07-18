@@ -56,10 +56,7 @@ export function createUI(scene) {
 }
 
 export function showGameOverScreen(scene) {
-  scene.spawnerEvent.destroy();
-  scene.player.body.setVelocity(0);
-  scene.enemies.setVelocity(0);
-
+  console.log("showGameOver called");
   const overlay = scene.add.rectangle(400, 300, 800, 800, 0x000000, 0.7);
 
   scene.add.text(400, 220, 'Game Over', {

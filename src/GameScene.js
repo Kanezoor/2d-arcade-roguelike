@@ -49,9 +49,15 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(
       this.player,
       this.enemies,
-      (player, enemy) => damagePlayer(this, player, enemy)
+      (player, enemy) => {
+        const died = damagePlayer(this, player, enemy);
+        if (died) {
+          this.physics.pause();
+          showGameOverScreen(this);
+        }
+      
+      }
     );
-
   }
 
   update() {
