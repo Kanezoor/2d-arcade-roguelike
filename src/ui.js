@@ -16,7 +16,7 @@ export function drawUI(scene) {
     scene.uiGraphics.fillStyle(0xff0000, 1);;
   }
 
-  const hpPercentage = scene.playerHealth / scene.playerMaxHealth;
+  const hpPercentage = scene.player.health / scene.player.maxHealth;
   scene.uiGraphics.fillRect(barX, barY, barWidth * hpPercentage, barHeigth);
 
   scene.uiGraphics.lineStyle(2, 0xffa500, 1);

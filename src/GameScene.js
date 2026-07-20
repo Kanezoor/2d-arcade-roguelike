@@ -1,5 +1,7 @@
 import { createTextures } from "./textures.js";
-import { createPlayer, updatePlayer, damagePlayer } from "./player.js";
+// import { createPlayer, updatePlayer, damagePlayer } from "./player.js";
+// import { createPlayer, updatePlayer, damagePlayer } from "./entities/Player.js";
+import Player from "./entities/Player.js";
 import { spawnEnemy, hitEnemy, createEnemies, updateEnemies } from "./enemy.js";
 import { createUI, drawUI, showGameOverScreen } from "./ui.js";
 
@@ -17,7 +19,8 @@ export class GameScene extends Phaser.Scene {
 
     createTextures(this);
 
-    createPlayer(this);
+    // createPlayer(this);
+    this.player = new Player(this);
 
     createUI(this);
 
@@ -47,21 +50,20 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.physics.add.overlap(
-      this.player,
+      this.player.sprite,
       this.enemies,
-      (player, enemy) => {
-        const died = damagePlayer(this, player, enemy);
-        if (died) {
+      (playerSprite, enemy) => {
+        if (this.player.takeDamge(enemy)) {
           this.physics.pause();
           showGameOverScreen(this);
         }
-      
       }
     );
   }
 
   update() {
-    updatePlayer(this);
+    // updatePlayer(this);
+    this.player.update();
     updateEnemies(this);
 
     drawUI(this);

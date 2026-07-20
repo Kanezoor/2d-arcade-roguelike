@@ -43,8 +43,8 @@ export function updateEnemies(scene) {
     const angle = Phaser.Math.Angle.Between(
       enemy.x,
       enemy.y,
-      scene.player.x,
-      scene.player.y
+      scene.player.sprite.x,
+      scene.player.sprite.y
     );
 
     enemy.body.setVelocity(
