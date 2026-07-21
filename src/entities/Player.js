@@ -1,4 +1,5 @@
 import { showGameOverScreen } from "../ui.js";
+import BasicGun from "../weapons/BasicGun.js";
 
 export default class Player {
   constructor(scene) {
@@ -18,7 +19,7 @@ export default class Player {
     this.currency = 0;
     this.level = 0;
     this.experience = 0;
-    this.leftWeapon = null;
+    this.leftWeapon = new BasicGun(this);
     this.rightWeapon = null;
     this.passiveItems = [];
 
@@ -56,40 +57,9 @@ export default class Player {
   shoot() {
     const pointer = this.scene.input.activePointer;
 
-    if (!pointer.isDown) return;
-    if (this.scene.time.now < this.nextFire) return;
-
-    const angle = Phaser.Math.Angle.Between(
-      this.sprite.x,
-      this.sprite.y,
-      pointer.x,
-      pointer.y
-    );
-
-    const bullet = this.scene.projectiles.create(
-      this.sprite.x,
-      this.sprite.y,
-      'bullet'
-    );
-
-    const bulletSpeed = 600;
-    
-    bullet.body.setVelocity(
-      Math.cos(angle) * bulletSpeed,
-      Math.sin(angle) * bulletSpeed,
-    );
-
-    console.log({
-    now: this.scene.time.now,
-    fireRate: this.fireRate,
-    nextFireBefore: this.nextFire
-    });
-
-    this.nextFire = this.scene.time.now + this.fireRate;
-
-    console.log({
-    nextFireAfter: this.nextFire
-    });
+    if (pointer.isDown && this.leftWeapon) {
+      this.leftWeapon.shoot(pointer);
+    }
   }
 
   takeDamge(enemy) {
@@ -112,7 +82,7 @@ export default class Player {
       Math.sin(angle) * 400
     );
 
-    const enemyKnockback = 1000;
+    const enemyKnockback = 3000;
     enemy.kbX = -Math.cos(angle) * enemyKnockback;
     enemy.kbY = -Math.sin(angle) * enemyKnockback;
 
