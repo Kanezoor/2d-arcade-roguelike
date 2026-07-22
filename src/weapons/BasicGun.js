@@ -1,36 +1,36 @@
 import Weapon from "./Weapon.js"
+import basicGun from "./definitions/basicGun.js";
 
 export default class BasicGun extends Weapon {
   constructor(owner) {
     super(owner);
-    this.damage = 10;
-    this.fireRate = 300;
+    this.loadDefinition(basicGun);
   }
 
   shoot(pointer) {
-    if (this.scene.time.now < this.owner.nextFire) return;
+    if (!this.canShoot()) return;
 
     const angle = Phaser.Math.Angle.Between(
-      this.sprite.x,
-      this.sprite.y,
+      this.owner.sprite.x,
+      this.owner.sprite.y,
       pointer.x,
       pointer.y
     );
 
     const bullet = this.scene.projectiles.create(
-      this.sprite.x,
-      this.sprite.y,
+      this.owner.sprite.x,
+      this.owner.sprite.y,
       'bullet'
     );
 
-    const bulletSpeed = 600;
-    
+    bullet.damage = this.stats.damage;
+
     bullet.body.setVelocity(
-      Math.cos(angle) * bulletSpeed,
-      Math.sin(angle) * bulletSpeed,
+      Math.cos(angle) * this.stats.projectileSpeed,
+      Math.sin(angle) * this.stats.projectileSpeed,
     );
 
-    this.owner.nextFire = this.scene.time.now + this.fireRate;
+    this.nextFire = this.scene.time.now + this.stats.fireRate;
   }
 
 }

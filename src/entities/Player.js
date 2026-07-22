@@ -1,5 +1,6 @@
 import { showGameOverScreen } from "../ui.js";
-import BasicGun from "../weapons/BasicGun.js";
+import BasicGun from "../weapons/BasicGun.js"
+import WeaponFactory from "../weapons/WeaponFactory.js";
 
 export default class Player {
   constructor(scene) {
@@ -19,7 +20,7 @@ export default class Player {
     this.currency = 0;
     this.level = 0;
     this.experience = 0;
-    this.leftWeapon = new BasicGun(this);
+    this.leftWeapon = WeaponFactory.create('basic_gun', this);
     this.rightWeapon = null;
     this.passiveItems = [];
 
