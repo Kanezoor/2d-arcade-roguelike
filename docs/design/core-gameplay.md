@@ -45,7 +45,7 @@ Repeat
 
 ## Pillars
 
-- Fast gameplay
+- Combat rewards mastery instead of overwhelming speed.(Flow is earned through mastery.)
 
 - Interesting weapon combinations
 

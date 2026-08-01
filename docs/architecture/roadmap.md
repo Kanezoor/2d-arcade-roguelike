@@ -1,45 +1,74 @@
-# Roadmap
+Phase 0
+Architecture
 
-## Engine
+✔ Scene split
+✔ Entity
+✔ Player
+✔ Weapon
+✔ Weapon Factory
 
-[x] Scene split
+↓
 
-[x] Player class
+Phase 1
+Combat Foundation
 
-[x] Weapon class
+Damage System
+Damage Types
+Status Effects
+Enemy Traits
 
-[x] BasicGun
+↓
 
-[x] Weapon definitions
+Phase 2
+Weapons
 
-[ ] WeaponFactory
+Weapon Modules
+Reload System
+Weapon Drops
+Weapon Progression
 
-[ ] WeaponStats
+↓
 
-[ ] Fire Modes
+Phase 3
+Player
 
-[ ] Modules
+Passive Items
+Inventory
+Companions
 
----
+↓
 
-## Gameplay
+Phase 4
+World
 
-[ ] Inventory
+NPC System
+Hub
+Quest System
 
-[ ] Weapon Drops
+↓
 
-[ ] Passive Items
+Phase 5
+Content
 
-[ ] Bosses
+Enemies
+Biomes
+Bosses
 
----
+↓
 
-## Multiplayer
+Phase 6
+Meta Progression
 
-[ ] Login
+Unlocks
+Achievements
+Permanent progression
 
-[ ] Lobby
+↓
 
-[ ] Synchronization
+Phase 7
+Networking
 
-[ ] Chat
+Authentication
+Lobby
+Synchronization
+Co-op

@@ -2,33 +2,37 @@
 
 ## Purpose
 
-Combat is one of the central pillars of the game.
+Combat is one of the core pillars of the game.
 
-The goal is not to make the player infinitely stronger throughout a run.
+Its purpose is not simply to test the player's reflexes or increase
+difficulty through larger numbers.
 
-Instead, combat should continuously encourage observation,
-adaptation and meaningful decision making.
+Combat should encourage observation, adaptation and mastery.
 
-A successful build should provide more options for solving problems,
-not remove the need to solve them.
+Every encounter should ask the player to understand their build,
+their enemies and the environment.
 
-The player should feel powerful because they understand their build,
-their enemies and the game's mechanics—not because every enemy dies
-before interacting with them.
+A successful build should create more possibilities for solving
+problems rather than removing the need to solve them.
+
+The player should feel powerful because they understand the game's
+systems—not because enemies become irrelevant.
 
 ---
 
 # Core Philosophy
 
-The game should reward mastery rather than raw numbers.
+Combat should reward understanding rather than statistics.
 
-Progression should increase the player's possibilities,
-not eliminate challenge.
+Progression should increase the player's options instead of eliminating
+challenge.
 
-As the player becomes stronger, the game should continue asking
-interesting questions.
+As the player grows stronger, the game should continue presenting
+interesting decisions.
 
-Power should create new gameplay rather than removing gameplay.
+Power should create new gameplay.
+
+It should never remove gameplay.
 
 ---
 
@@ -37,16 +41,19 @@ Power should create new gameplay rather than removing gameplay.
 The game should avoid situations where the optimal strategy becomes
 holding the fire button while everything dies automatically.
 
-A powerful build should still require:
+Every stage of progression should remain engaging.
+
+A powerful build should still reward:
 
 - positioning
 - movement
 - target prioritization
 - adapting to enemy mechanics
-- choosing the correct weapon
+- choosing appropriate weapons
 - understanding enemy behaviour
 
-Late-game gameplay should remain engaging rather than becoming passive.
+The player's decisions should remain meaningful from the beginning of
+the run until the final boss.
 
 ---
 
@@ -56,20 +63,20 @@ Every build should have strengths.
 
 Every build should also have weaknesses.
 
-No build should be capable of solving every problem equally well.
+No build should solve every problem equally well.
 
 Examples
 
-High Fire Damage
+Fire Build
 
 Strengths
 
-- excellent against organic enemies
-- area denial
+- excellent crowd control
+- damage over time
 
 Weaknesses
 
-- ineffective against fire-resistant enemies
+- struggles against fire-resistant enemies
 
 ---
 
@@ -77,13 +84,13 @@ Sniper Build
 
 Strengths
 
-- high single-target damage
+- precise high damage
 - long range
 
 Weaknesses
 
-- struggles against large hordes
-- vulnerable to fast enemies
+- vulnerable to swarms
+- slower reaction to fast enemies
 
 ---
 
@@ -92,45 +99,35 @@ Explosion Build
 Strengths
 
 - destroys groups
-- breaks environmental objects
+- breaks environmental cover
 
 Weaknesses
 
 - ineffective against explosion-resistant enemies
 - dangerous in confined spaces
 
-The player should occasionally encounter situations that encourage
-changing tactics rather than relying on a single solution.
+The goal is not perfect balance.
+
+The goal is meaningful diversity.
 
 ---
 
 # Enemy Design Philosophy
 
-Enemies should not simply differ in health and damage.
+Enemies should differ because of their mechanics,
+not simply because of their statistics.
 
-Every enemy should introduce a gameplay question.
+Every enemy should present a gameplay question.
 
 Examples
 
 Fast Enemy
 
-Question
-
-Can the player accurately hit moving targets?
-
----
-
-Heavy Enemy
-
-Question
-
-Can the player survive prolonged combat?
+Can the player reliably hit moving targets?
 
 ---
 
 Shield Enemy
-
-Question
 
 Can the player attack from another angle?
 
@@ -138,133 +135,221 @@ Can the player attack from another angle?
 
 Cover Enemy
 
-Question
-
 Can the player bypass or destroy cover?
 
-Every enemy should test different aspects of the player's build.
+---
+
+Heavy Enemy
+
+Can the player survive prolonged combat?
+
+Each enemy should challenge different aspects of the player's build.
 
 ---
 
 # Enemy Traits
 
-Instead of relying only on statistics, enemies should possess traits.
+Enemies should possess unique traits that influence combat.
 
 Examples
 
-Fire Resistant
+- Fire Resistant
+- Explosion Resistant
+- Knockback Immune
+- High Dodge Chance
+- Shielded
+- Flying
+- Burrowing
+- Regenerating
+- Teleporting
 
-Explosion Resistant
+Traits encourage adaptation instead of simple damage scaling.
 
-Knockback Immune
+Resistance is only one possible trait.
 
-High Dodge Chance
-
-Shielded
-
-Flying
-
-Burrowing
-
-Regenerating
-
-Teleporting
-
-Each trait changes how the player approaches combat.
-
-Traits should encourage adaptation rather than frustration.
+Each enemy should feel mechanically unique.
 
 ---
 
 # Enemy Counters
 
-Certain enemies should naturally counter specific builds.
+Some enemies should naturally counter certain builds.
 
 Examples
 
 Fire-resistant enemies challenge fire builds.
 
+Enemies using cover challenge direct-fire weapons.
+
 Highly mobile enemies challenge sniper builds.
 
-Enemies using cover challenge direct-fire weapons.
+Flying enemies challenge melee builds.
 
 Armoured enemies challenge rapid low-damage weapons.
 
-Flying enemies challenge melee-focused builds.
+Countered should never mean impossible.
 
-These counters should encourage players to diversify their builds.
+Players should always have options.
 
-Countered does not mean impossible.
-
-Players should always have options,
-but some approaches should require greater effort.
+Some solutions should simply be more effective than others.
 
 ---
 
-# Environmental Interaction
+# Environmental Combat
 
 Combat should involve the environment whenever possible.
 
 Examples
 
-Cover
+- cover
+- destructible cover
+- hazardous terrain
+- explosive objects
+- narrow corridors
+- open arenas
 
-Destructible cover
+Different builds should naturally interact with the environment in
+different ways.
 
-Hazardous terrain
+Ricochet weapons.
 
-Explosive objects
+Piercing weapons.
 
-Narrow corridors
+Explosive weapons.
 
-Open arenas
+Flamethrowers.
 
-The environment should influence combat as much as enemy statistics.
-
-Different builds should interact with environments differently.
-
-Examples
-
-Ricochet weapons
-
-Piercing weapons
-
-Explosive weapons
-
-Flamethrowers
-
-Each should naturally excel in different situations.
+Every build should occasionally feel uniquely suited for the current
+situation.
 
 ---
 
-# Horde Combat
+# Horde Encounters
 
-Not every room should contain a horde.
+Not every room should contain large groups of enemies.
 
-Large enemy groups should appear intentionally.
+Horde encounters should be intentional gameplay moments.
 
-These encounters reward:
+They reward:
 
 - crowd control
 - positioning
 - area damage
 - resource management
 
-Single-target builds should still be viable,
-but may require more careful play.
+Single-target builds remain viable,
+but may require more careful execution.
 
 ---
 
 # Boss Philosophy
 
-Bosses should test everything the player has learned.
+Bosses should represent the ultimate test of everything the player has
+learned.
 
 Bosses should not simply have larger health pools.
 
-They should combine mechanics introduced by regular enemies while
-adding unique behaviours of their own.
+They should combine previously learned mechanics while introducing
+their own unique behaviours.
 
-Boss victories should feel earned through understanding and adaptation.
+Boss victories should feel earned through preparation,
+adaptation and mastery.
+
+Bosses are also the only enemies that should consistently display
+a visible health bar.
+
+Boss encounters are long-form battles where progress information
+improves player experience rather than reducing challenge.
+
+---
+
+# Combat Feedback
+
+Combat should communicate information primarily through gameplay,
+and only secondarily through the user interface.
+
+The player should learn to read enemies instead of reading health bars.
+
+Whenever possible, enemy condition should be communicated through:
+
+- animations
+- movement
+- sound
+- visual effects
+- behaviour changes
+
+Examples
+
+Healthy enemy
+
+Moves confidently.
+
+Damaged enemy
+
+Shows visible wounds.
+
+Critical enemy
+
+Moves differently,
+becomes desperate,
+or visibly struggles.
+
+The interface should support gameplay,
+not replace it.
+
+---
+
+# Damage Feedback
+
+Regular enemies should not display permanent health bars.
+
+Instead, combat should communicate effectiveness through floating
+damage numbers.
+
+Examples
+
+Regular hit
+
+25
+
+Critical hit
+
+42!
+
+Fire damage
+
+🔥 16
+
+Poison
+
+☠ 8
+
+Electric
+
+⚡ 21
+
+Ice
+
+❄ 12
+
+Blocked
+
+BLOCKED
+
+Missed attack
+
+MISS
+
+Immune target
+
+IMMUNE
+
+Resisted damage
+
+RESISTED
+
+Players should immediately understand what happened without needing
+combat logs or detailed statistics.
 
 ---
 
@@ -272,20 +357,15 @@ Boss victories should feel earned through understanding and adaptation.
 
 The game should avoid artificial level scaling.
 
-Enemy difficulty should increase through:
+Enemies should become more difficult because they gain:
 
 - new mechanics
-- new behaviours
-- better combinations
-- environmental complexity
-- tactical challenges
+- better behaviours
+- stronger combinations
+- more interesting environments
 
-Instead of simply increasing:
-
-- health
-- damage
-
-Progression should make encounters more interesting rather than longer.
+Difficulty should come from understanding encounters,
+not from inflated health pools.
 
 ---
 
@@ -297,10 +377,9 @@ Player progression should unlock:
 - new interactions
 - new strategies
 
-Player progression should not remove challenge entirely.
+Progression should never eliminate challenge.
 
-The strongest builds should still require player skill to reach
-their full potential.
+The strongest builds should still reward player skill.
 
 Mastery should always outperform statistics alone.
 
@@ -308,61 +387,51 @@ Mastery should always outperform statistics alone.
 
 # Flow State
 
-One of the long-term goals is to create a feeling of flow similar
-to games where mastery leads to effortless execution.
+One of the primary design goals is to create a satisfying feeling of
+flow.
 
-Flow should not come from enemies being too weak.
+Flow should emerge naturally from player mastery.
 
-Flow should come from:
+The player should reach a point where movement, aiming,
+weapon switching and decision making become instinctive.
 
-- understanding enemy behaviour
-- understanding player abilities
-- movement mastery
-- positioning
-- decision making
-- mechanical skill
+Flow should never result from enemies becoming meaningless.
 
-The player should feel powerful because they have mastered the game,
-not because the game has stopped challenging them.
+It should result from the player's understanding of the game's systems.
 
 ---
 
 # Unlock Philosophy
 
-The game should avoid overwhelming the player with hundreds of choices
+The game should avoid overwhelming players with hundreds of choices
 from the beginning.
 
-Instead, players gradually unlock additional content through
-exploration, experimentation and meaningful achievements.
+Instead, new content should gradually become available through:
 
-Examples
+- exploration
+- experimentation
+- hidden discoveries
+- NPC quest lines
+- world progression
 
-Hidden locations
-
-NPC quest lines
-
-Special events
-
-Secret bosses
-
-World discoveries
-
-Unlocking new items should feel like discovering new possibilities,
-not simply increasing the amount of available loot.
+Unlocks should expand possibilities rather than simply increasing
+loot quantity.
 
 ---
 
 # Replayability
 
-Replayability should emerge from:
+Replayability should emerge naturally through:
 
 - different builds
-- different NPC decisions
-- different unlocked content
+- different NPC relationships
+- different rewards
 - different combat challenges
 - different enemy combinations
+- different world states
 
-The goal is that no two successful runs feel identical.
+Every successful run should feel different because the player's
+decisions were different.
 
 ---
 
@@ -378,16 +447,18 @@ Combat should:
 
 ✔ Encourage diverse builds.
 
-✔ Make every enemy meaningful.
+✔ Make every enemy mechanically meaningful.
 
-✔ Keep challenge throughout the entire run.
+✔ Keep challenge throughout the entire game.
 
 ✔ Avoid "hold fire to win" gameplay.
 
-✔ Encourage players to think as well as react.
+✔ Communicate through gameplay before UI.
+
+✔ Reward understanding rather than statistics.
 
 ✔ Create satisfying moments of flow through mastery.
 
-The player should finish a successful run feeling that they overcame
-the game's challenges through understanding, preparation and skill,
-rather than simply obtaining the strongest numbers.
+The player should complete a successful run feeling that victory was
+earned through preparation, creativity and skill—not simply because
+their numbers became larger than the enemies' numbers.
