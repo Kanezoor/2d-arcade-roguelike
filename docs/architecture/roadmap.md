@@ -1,74 +1,44 @@
-Phase 0
-Architecture
+Milestone 1
+Foundation
 
-✔ Scene split
 ✔ Entity
 ✔ Player
+✔ Enemy
 ✔ Weapon
-✔ Weapon Factory
+✔ Damage
 
 ↓
 
-Phase 1
-Combat Foundation
+Milestone 2
+Playable Demo
 
-Damage System
-Damage Types
-Status Effects
-Enemy Traits
-
-↓
-
-Phase 2
-Weapons
-
-Weapon Modules
-Reload System
-Weapon Drops
-Weapon Progression
+✔ 8-10 rooms
+✔ 3 bosses
+✔ 10-15 weapons
+✔ 15-20 passive items
+✔ save/load
+✔ multiplayer
 
 ↓
 
-Phase 3
-Player
+Milestone 3
+Vertical Slice
 
-Passive Items
-Inventory
-Companions
-
-↓
-
-Phase 4
-World
-
-NPC System
-Hub
-Quest System
+✔ NPCs
+✔ quests
+✔ one complete Path
+✔ transformations
 
 ↓
 
-Phase 5
-Content
+Milestone 4
+Core Game
 
-Enemies
-Biomes
-Bosses
-
-↓
-
-Phase 6
-Meta Progression
-
-Unlocks
-Achievements
-Permanent progression
+Multiple Paths
+Lore
+World Persistence
 
 ↓
 
-Phase 7
-Networking
-
-Authentication
-Lobby
-Synchronization
-Co-op
+Milestone 5
+Release Candidate

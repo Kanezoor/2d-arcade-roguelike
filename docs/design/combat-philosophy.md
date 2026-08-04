@@ -462,3 +462,5 @@ Combat should:
 The player should complete a successful run feeling that victory was
 earned through preparation, creativity and skill—not simply because
 their numbers became larger than the enemies' numbers.
+
+Combat should adapt to the identity of each Path. Different Paths should encourage different combat styles through enemies, environments, and mechanics rather than simply increasing enemy statistics.

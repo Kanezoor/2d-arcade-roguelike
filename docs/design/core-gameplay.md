@@ -16,30 +16,23 @@ but focusing on modular weapons and player experimentation.
 ## Core Loop
 
 Explore
-
-↓
-
-Fight
-
-↓
-
-Gain Experience
-
-↓
-
-Choose Upgrade
-
-↓
-
-Find Weapons
-
-↓
-
-Defeat Boss
-
-↓
-
-Repeat
+        ↓
+Encounter
+        ↓
+┌───────────────┬───────────────┬───────────────┐
+│ Combat        │ NPC           │ Discovery     │
+│               │               │               │
+└───────────────┴───────────────┴───────────────┘
+        ↓
+Meaningful Decision
+        ↓
+Build Evolution
+        ↓
+Continue Exploring
+        ↓
+Boss
+        ↓
+Next Path
 
 ---
 

@@ -121,4 +121,7 @@ Possible future goals:
 - remember NPC states
 - remember important world events
 
+
+Every Path asks one central philosophical question.
+
 The implementation details will depend on future networking architecture.

@@ -30,6 +30,7 @@ Possible consequences:
 - alternative endings
 
 The player's appearance should tell the story of their journey.
+Transformation is specialization, not progression.
 
 ---
 
