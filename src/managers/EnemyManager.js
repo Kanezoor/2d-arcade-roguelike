@@ -44,7 +44,7 @@ export function spawnEnemy(scene) {
         knockbackResistance:0.35
     };
 
-  new Enemy(sprite, config);
+  return new Enemy(sprite, config);
 }
 
 export function updateEnemies(scene) {
