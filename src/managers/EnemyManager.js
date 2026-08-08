@@ -24,9 +24,6 @@ export function spawnEnemy(scene) {
 
   const isBrute = Math.random() < 0.3;
   const key = isBrute ? 'purpleBrute' : 'blueEnemy';
-  // const sprite = scene.enemies.create(rx, ry, key);
-  // const enemy = new Enemy(sprite);
-  // sprite.enemy = enemy;
   const sprite = scene.enemies.create(rx, ry, key);
 
   const config = isBrute
@@ -48,21 +45,6 @@ export function spawnEnemy(scene) {
     };
 
   new Enemy(sprite, config);
-
-
-
-  // const enemy = scene.enemies.create(rx, ry, key);
-
-  // enemy.health = isBrute ? 6 : 3;
-  // enemy.maxHealth = isBrute ? 6 : 3;
-  // enemy.speedValue = isBrute ? 80 : 200;
-  // enemy.colorValue = isBrute ? 0x800080 : 0x0000ff;
-  // enemy.scoreValue = isBrute ? 30 : 10;
-  // enemy.damageValue = isBrute ? 20 : 10;
-  // enemy.nockbackResistance = isBrute ? 1 : 0.35;
-
-  // enemy.kbX = 0;
-  // enemy.kbY = 0;
 }
 
 export function updateEnemies(scene) {
@@ -144,11 +126,3 @@ export function hitEnemy(scene, bullet, sprite) {
     );
   }
 }
-
-// function takeDamage(context) {
-//   this.health -= context.baseDamage;
-
-//   if (this.health <= 0) {
-//     this.die();
-//   }
-// }

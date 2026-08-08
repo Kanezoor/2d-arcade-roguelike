@@ -1,6 +1,4 @@
 import { createTextures } from "./textures.js";
-// import { createPlayer, updatePlayer, damagePlayer } from "./player.js";
-// import { createPlayer, updatePlayer, damagePlayer } from "./entities/Player.js";
 import Player from "./entities/Player.js";
 import { spawnEnemy, hitEnemy, createEnemies, updateEnemies } from "./managers/EnemyManager.js";
 import { createUI, drawUI, showGameOverScreen } from "./ui.js";
@@ -62,7 +60,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
-    // updatePlayer(this);
     this.player.update();
     updateEnemies(this);
 
