@@ -4,13 +4,13 @@ export default class DamageContext {
   constructor({
     source,
     target,
-    amount,
+    baseDamage,
     type = DamageType.PHYSICAL,
     critical = false,
   }) {
     this.source = source;
     this.target = target;
-    this.amount = amount;
+    this.baseDamage = baseDamage;
     this.type = type;
     this.critical = critical;
   }

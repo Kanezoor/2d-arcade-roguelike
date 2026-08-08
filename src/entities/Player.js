@@ -63,38 +63,45 @@ export default class Player {
     }
   }
 
-  takeDamge(enemy) {
-    if (this.scene.time.now - this.lastDamageTime < this.damageCooldown) 
-      return false;
+  takeDamge(enemySprite) {
 
-    this.lastDamageTime = this.scene.time.now;
-
-    this.health -= enemy.damageValue;
-
-    const angle = Phaser.Math.Angle.Between(
-      enemy.x,
-      enemy.y,
-      this.sprite.x,
-      this.sprite.y
-    );
-
-    this.sprite.body.setVelocity(
-      Math.cos(angle) * 400,
-      Math.sin(angle) * 400
-    );
-
-    const enemyKnockback = 3000;
-    enemy.kbX = -Math.cos(angle) * enemyKnockback;
-    enemy.kbY = -Math.sin(angle) * enemyKnockback;
-
-    if (this.health <= 0) {
-      this.health = 0;
-      this.die();
-      return true;
-    }
-    
+  if (this.scene.time.now - this.lastDamageTime < this.damageCooldown)
     return false;
+
+  this.lastDamageTime = this.scene.time.now;
+
+  const enemy = enemySprite.enemy;
+
+  this.health -= enemy.damage;
+
+  const angle = Phaser.Math.Angle.Between(
+    enemySprite.x,
+    enemySprite.y,
+    this.sprite.x,
+    this.sprite.y
+  );
+
+  this.sprite.body.setVelocity(
+    Math.cos(angle) * 400,
+    Math.sin(angle) * 400
+  );
+
+  const enemyKnockback = 3000;
+
+  enemy.kbX = -Math.cos(angle) * enemyKnockback;
+  enemy.kbY = -Math.sin(angle) * enemyKnockback;
+
+  if (this.health <= 0) {
+
+    this.health = 0;
+
+    this.die();
+
+    return true;
   }
+
+  return false;
+}
 
   die() {
     this.scene.isGameOver = true;
