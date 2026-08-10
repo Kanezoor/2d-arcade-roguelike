@@ -14,7 +14,7 @@ export default class Player {
     this.health = this.maxHealth;
     this.speed = 300;
     this.fireRate = 300;
-    this.nextFire = 0;
+    this.nextFire = 10;
     this.lastDamageTime = 0;
     this.damageCooldown = 500;
     this.currency = 0;
@@ -63,20 +63,22 @@ export default class Player {
     }
   }
 
-  takeDamge(enemySprite) {
+  takeDamage(source) {
 
   if (this.scene.time.now - this.lastDamageTime < this.damageCooldown)
     return false;
 
   this.lastDamageTime = this.scene.time.now;
 
-  const enemy = enemySprite.enemy;
+  const damage = source.enemy ? source.enemy.damage : source.damage;
 
-  this.health -= enemy.damage;
+  this.health -= damage;
+  console.log('Player damage: ', damage);
+  console.log("Player health:", this.health);
 
   const angle = Phaser.Math.Angle.Between(
-    enemySprite.x,
-    enemySprite.y,
+    source.x,
+    source.y,
     this.sprite.x,
     this.sprite.y
   );
@@ -86,10 +88,14 @@ export default class Player {
     Math.sin(angle) * 400
   );
 
-  const enemyKnockback = 3000;
+  if (source.enemy) {
+    const enemy = source.enemy;
+    const enemyKnockback = 3000;
 
-  enemy.kbX = -Math.cos(angle) * enemyKnockback;
-  enemy.kbY = -Math.sin(angle) * enemyKnockback;
+    enemy.kbX = -Math.cos(angle) * enemyKnockback;
+    enemy.kbY = -Math.sin(angle) * enemyKnockback;
+  }
+  
 
   if (this.health <= 0) {
 

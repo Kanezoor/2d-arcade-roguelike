@@ -1,6 +1,7 @@
 import { createTextures } from "./textures.js";
 import Player from "./entities/Player.js";
 import { hitEnemy, createEnemies, updateEnemies } from "./managers/EnemyManager.js";
+import Boss from "./entities/Boss.js";
 import RoomManager from "./managers/RoomManager.js";
 import { createUI, drawUI, showGameOverScreen } from "./ui.js";
 
@@ -23,6 +24,7 @@ export class GameScene extends Phaser.Scene {
     createUI(this);
 
     createEnemies(this);
+    this.bosses = this.physics.add.group();
     this.roomManager = new RoomManager(this);
     this.projectiles = this.physics.add.group();
     this.particles = this.add.group();
@@ -41,10 +43,34 @@ export class GameScene extends Phaser.Scene {
       this.player.sprite,
       this.enemies,
       (playerSprite, enemy) => {
-        if (this.player.takeDamge(enemy)) {
+        if (this.player.takeDamage(enemy)) {
           this.physics.pause();
           showGameOverScreen(this);
         }
+      }
+    );
+
+    this.physics.add.overlap(
+      this.projectiles,
+      this.bosses,
+      (bullet, bossSprite) => {
+        if (bullet.isBossProjectile) return;
+
+        bullet.destroy();
+        const boss = bossSprite.boss;
+
+        boss.takeDamage(bullet.damage);
+      }
+    );
+
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.projectiles,
+      (playerSprite, bullet) => {
+        if (!bullet.isBossProjectile) return;
+        console.log("BOSS BULLET HIT PLAYER");
+        bullet.destroy();
+        this.player.takeDamage(bullet);
       }
     );
     this.roomManager.start();
@@ -55,6 +81,9 @@ export class GameScene extends Phaser.Scene {
     updateEnemies(this);
 
     this.roomManager.update();
+    if (this.roomManager.boss) {
+      this.roomManager.boss.update(this.game.loop.delta);
+    }
 
     drawUI(this);
   }

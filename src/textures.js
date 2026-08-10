@@ -21,5 +21,10 @@ export function createTextures(scene) {
   g.generateTexture("purpleBrute", 45, 45);
   g.clear();
 
+  g.fillStyle(0x444444, 1);
+  g.fillEllipse(50, 35, 100, 70);
+  g.generateTexture("boss", 100, 70);
+  g.clear();
+
   g.destroy();
 }

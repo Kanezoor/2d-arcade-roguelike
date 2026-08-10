@@ -1,4 +1,5 @@
 import { spawnEnemy } from "./EnemyManager.js";
+import Boss from "../entities/Boss.js";
 
 export default class RoomManager {
   constructor(scene) {
@@ -64,7 +65,12 @@ export default class RoomManager {
 
   completeRun() {
     this.isRunComplete = true;
-    console.log('Run complete!');
+    console.log('Boss encounter starting');
+    const bossSprite = this.scene.bosses.create(400, 100, 'boss');
+
+    this.boss = new Boss(bossSprite, this.scene);
+    console.log('Boss encounter!');
+    // console.log('Run complete!');
   }
 
 }
