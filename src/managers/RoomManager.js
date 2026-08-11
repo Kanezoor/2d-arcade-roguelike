@@ -14,6 +14,7 @@ export default class RoomManager {
 
     this.isTransitioning = false;
     this.isRunComplete = false;
+    this.isBossRoom = false;
   }
 
   start() {
@@ -22,7 +23,7 @@ export default class RoomManager {
 
   startNextRoom() {
     if (this.currentRoom >= this.rooms.length) {
-      this.completeRun();
+      this.startBossRoom();
       return;
     }
 
@@ -38,7 +39,7 @@ export default class RoomManager {
   }
 
   update() {
-    if (this.isTransitioning || this.isRunComplete) {
+    if (this.isTransitioning || this.isRunComplete || this.isBossRoom) {
       return;
     }
 
@@ -63,14 +64,26 @@ export default class RoomManager {
     });
   }
 
-  completeRun() {
-    this.isRunComplete = true;
+  startBossRoom() {
+    // this.isRunComplete = true;
+    this.isBossRoom = true;
+    this.isTransitioning = false;
     console.log('Boss encounter starting');
+
     const bossSprite = this.scene.bosses.create(400, 100, 'boss');
 
     this.boss = new Boss(bossSprite, this.scene);
-    console.log('Boss encounter!');
-    // console.log('Run complete!');
+    console.log('Boss encounter!')
+  }
+
+  bossDefeated() {
+    if (this.isRunComplete) return;
+    this.isRunComplete = true;
+    this.isBossRoom = false;
+
+    console.log('Run Complete!');
+    
   }
 
 }
+

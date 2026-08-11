@@ -3,7 +3,7 @@ import Player from "./entities/Player.js";
 import { hitEnemy, createEnemies, updateEnemies } from "./managers/EnemyManager.js";
 import Boss from "./entities/Boss.js";
 import RoomManager from "./managers/RoomManager.js";
-import { createUI, drawUI, showGameOverScreen } from "./ui.js";
+import { createUI, drawUI, showGameOverScreen, showVictoryScreen } from "./ui.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -86,5 +86,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     drawUI(this);
+
+    if (this.roomManager && this.roomManager.isRunComplete && !this.isVictory) {
+      this.isVictory = true;
+      console.log('GAME COMPLETE!');
+      showVictoryScreen(this); 
+    }
   }
 }

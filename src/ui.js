@@ -89,3 +89,44 @@ export function showGameOverScreen(scene) {
     scene.scene.restart();
   });
 }
+
+export function showVictoryScreen(scene) {
+  console.log('showVictory called');
+
+  const overlay = scene.add.rectangle(400, 300, 800, 800, 0x000000, 0.7);
+
+  scene.add.text(400, 220, 'Victory', {
+      fontFamily: 'sans-serif',
+      fontSize: '48px',
+      fill: '#ffffff'   
+  }).setOrigin(0.5);
+
+  scene.add.text(400, 280, 'Final Score: ' + scene.score, {
+    fontFamily: 'sans-serif',
+    fontSize: '24px',
+    fill: '#ffffff'
+  }).setOrigin(0.5);
+
+  const restartText = scene.add.text(
+    400,
+    340,
+    'Click anywhere to play again',
+    {
+      fontFamily: 'sans-serif',
+      fontSize: '20px',
+      fill: '#ffa500'
+    }
+  ).setOrigin(0.5);
+
+  scene.tweens.add({
+    targets: restartText,
+    alpha: 0.3,
+    duration: 800,
+    yoyo: true,
+    lopp: -1,
+  });
+
+  scene.input.once('pointerdown', () => {
+    scene.scene.restart();
+  });
+}

@@ -166,6 +166,8 @@ export default class Boss {
 
     console.log("Boss defeated!");
 
+    this.scene.roomManager.bossDefeated();
+
   }
 
 }
