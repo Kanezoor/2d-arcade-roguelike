@@ -28,6 +28,7 @@ export class GameScene extends Phaser.Scene {
     this.roomManager = new RoomManager(this);
     this.projectiles = this.physics.add.group();
     this.particles = this.add.group();
+    this.rewards = this.add.group();
 
     this.score = 0;
 
@@ -73,6 +74,15 @@ export class GameScene extends Phaser.Scene {
         this.player.takeDamage(bullet);
       }
     );
+
+    // this.physics.add.overlap(
+    //   this.player.sprite,
+    //   this.roomManager.door,
+    //   () => {
+    //     this.roomManager.enterDoor();
+    //   }
+    // );
+
     this.roomManager.start();
   }
 

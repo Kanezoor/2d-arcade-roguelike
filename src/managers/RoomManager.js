@@ -1,5 +1,6 @@
 import { spawnEnemy } from "./EnemyManager.js";
 import Boss from "../entities/Boss.js";
+import Reward from "../entities/Reward.js";
 
 export default class RoomManager {
   constructor(scene) {
@@ -14,7 +15,12 @@ export default class RoomManager {
 
     this.isTransitioning = false;
     this.isRunComplete = false;
-    this.isBossRoom = false;
+    this.isBossRoom = false
+    this.isRoomCleared = false;
+    this.isDoorOpen = false;
+
+    this.door = null;
+
   }
 
   start() {
@@ -22,6 +28,11 @@ export default class RoomManager {
   }
 
   startNextRoom() {
+
+    this.isRoomCleared = false;
+    this.isDoorOpen = false;
+    this.isTransitioning = false;
+
     if (this.currentRoom >= this.rooms.length) {
       this.startBossRoom();
       return;
@@ -30,6 +41,24 @@ export default class RoomManager {
     this.currentRoom++;
 
     const room = this.rooms[this.currentRoom - 1];
+
+    this.door = this.scene.add.rectangle(
+      750,
+      400,
+      40,
+      120,
+      0xff0000
+    );
+
+    this.scene.physics.add.existing(this.door, true);
+
+    this.scene.physics.add.overlap(
+      this.scene.player.sprite,
+      this.door,
+      () => {
+        this.enterDoor();
+      }
+    );
 
     console.log(`Starting room ${this.currentRoom} with ${room.enemyCount} enemies`);
 
@@ -56,12 +85,16 @@ export default class RoomManager {
 
   completeRoom() {
     this.isTransitioning = true;
+
+    this.isRoomCleared = true;
+    this.isDoorOpen = true;
     console.log(`Room ${this.currentRoom} complete`);
 
-    this.scene.time.delayedCall(1000, () => {
-      this.isTransitioning = false;
-      this.startNextRoom();
-    });
+    this.spawnReward();
+
+    if (this.door) {
+      this.door.setFillStyle(0x00ff00);
+    }
   }
 
   startBossRoom() {
@@ -83,6 +116,36 @@ export default class RoomManager {
 
     console.log('Run Complete!');
     
+  }
+
+  enterDoor() {
+    if (!this.isRoomCleared || !this.isDoorOpen) {
+      return;
+    }
+
+    console.log(`Leaving room ${this.currentRoom}`);
+    this.isTransitioning = true;
+
+    if (this.door) {
+      this.door.destroy();
+      this.door = null;
+    }
+
+    this.startNextRoom();
+  }
+
+  spawnReward() {
+    const sprite = this.scene.add.rectangle(
+      400, 400, 40, 40, 0xffff00
+    );
+
+    this.scene.physics.add.existing(sprite, true);
+
+    this.scene.rewards.add(sprite);
+
+    new Reward(sprite);
+
+    console.log('Reward spawned');
   }
 
 }
