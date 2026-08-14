@@ -5,4 +5,11 @@ export default class Reward {
 
     sprite.reward = this;
   }
+
+  applyTo(player) {
+    if (this.type === 'vitalityCore') {
+      player.maxHealth += 20;
+      player.health += 20;
+    }
+  }
 }

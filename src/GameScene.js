@@ -75,13 +75,24 @@ export class GameScene extends Phaser.Scene {
       }
     );
 
-    // this.physics.add.overlap(
-    //   this.player.sprite,
-    //   this.roomManager.door,
-    //   () => {
-    //     this.roomManager.enterDoor();
-    //   }
-    // );
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.rewards,
+      (playerSprite, rewardSprite) => {
+        console.log('Reward collected');
+
+        const reward = rewardSprite.reward;
+        reward.applyTo(this.player);
+        rewardSprite.destroy();
+
+        console.log(
+          'Player health: ',
+          this.player.health,
+          '/',
+          this.player.maxHealth
+        );
+      }
+    );
 
     this.roomManager.start();
   }

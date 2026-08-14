@@ -131,6 +131,7 @@ export default class RoomManager {
       this.door = null;
     }
 
+    this.clearRewards();
     this.startNextRoom();
   }
 
@@ -146,6 +147,10 @@ export default class RoomManager {
     new Reward(sprite);
 
     console.log('Reward spawned');
+  }
+
+  clearRewards() {
+    this.scene.rewards.clear(true, true);
   }
 
 }
