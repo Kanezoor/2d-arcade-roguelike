@@ -1,7 +1,7 @@
 export default class Reward {
-  constructor(sprite) {
+  constructor(sprite, type = 'vitalityCore') {
     this.sprite = sprite;
-    this.type = 'vitalityCore';
+    this.type = type;
 
     sprite.reward = this;
   }
@@ -10,6 +10,10 @@ export default class Reward {
     if (this.type === 'vitalityCore') {
       player.maxHealth += 20;
       player.health += 20;
+    }
+
+    if (this.type === 'magneticCore') {
+      player.hasMagneticCore = true;
     }
   }
 }

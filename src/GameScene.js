@@ -83,6 +83,8 @@ export class GameScene extends Phaser.Scene {
 
         const reward = rewardSprite.reward;
         reward.applyTo(this.player);
+
+        console.log('Magnetic core: ', this.player.hasMagneticCore);
         rewardSprite.destroy();
 
         console.log(
@@ -113,5 +115,11 @@ export class GameScene extends Phaser.Scene {
       console.log('GAME COMPLETE!');
       showVictoryScreen(this); 
     }
+
+    this.projectiles.getChildren().forEach(bullet => {
+      if (bullet.projectile) {
+        bullet.projectile.update();
+      }
+    });
   }
 }

@@ -144,7 +144,7 @@ export default class RoomManager {
 
     this.scene.rewards.add(sprite);
 
-    new Reward(sprite);
+    new Reward(sprite, 'magneticCore');
 
     console.log('Reward spawned');
   }

@@ -20,9 +20,14 @@ export default class Player {
     this.currency = 0;
     this.level = 0;
     this.experience = 0;
-    this.leftWeapon = WeaponFactory.create('basic_gun', this);
+
+    this.basicWeapon = WeaponFactory.create('basic_gun', this);
+    this.shotgun = WeaponFactory.create('shotgun', this);
+    this.leftWeapon = this.basicWeapon;
     this.rightWeapon = null;
     this.passiveItems = [];
+
+    this.hasMagneticCore = false;
 
 
     this.cursors = scene.input.keyboard.addKeys({
@@ -31,11 +36,20 @@ export default class Player {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D
     });
+    this.switchKeys = this.scene.input.keyboard.addKeys('ONE,TWO');
 
   }
 
   update() {
     if (this.scene.isGameOver) return;
+
+    if (Phaser.Input.Keyboard.JustDown(this.switchKeys.ONE)) {
+      this.leftWeapon = this.basicWeapon;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.switchKeys.TWO)) {
+      this.leftWeapon = this.shotgun;
+    }
 
     this.move();
     this.shoot();

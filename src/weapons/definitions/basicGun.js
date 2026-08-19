@@ -1,6 +1,6 @@
 const basicGun = {
   id: 'basic_gun',
-  name: 'Basic Pisto;',
+  name: 'Basic Pistol;',
   description: 'A simple semi-automatic pistol',
   rarity: 'Common',
   stats: {
