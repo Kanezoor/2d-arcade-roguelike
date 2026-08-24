@@ -8,9 +8,45 @@ export default class RoomManager {
 
     this.currentRoom = 0;
     this.rooms = [
-      {enemyCount: 5},
-      {enemyCount: 7},
-      {enemyCount: 9},
+      {
+        width: 800,
+        height: 800,
+        shape: 'rectangle',
+        background: 0xffffff,
+        enemies: [
+          {type: 'blue', count: 5},
+        ],
+      },
+      {
+        width: 800,
+        height: 800,
+        shape: 'rectangle',
+        background: 0xe8e8e8,
+        enemies: [
+          {type: 'blue', count: 5},
+          {type: 'brute', count: 1},
+        ],
+      },
+      {
+        width: 800,
+        height: 650,
+        shape: 'rectangle',
+        background: 0xdfefff,
+        enemies: [
+          {type: 'blue', count: 4},
+          {type: 'brute', count: 2},
+        ],
+      },
+      {
+        width: 700,
+        height: 700,
+        shape: 'circle',
+        background: 0xeee0ff,
+        enemies: [
+          {type: 'blue', count: 2},
+          {type: 'brute', count: 4}
+        ],
+      }
     ];
 
     this.isTransitioning = false;
@@ -40,11 +76,16 @@ export default class RoomManager {
 
     this.currentRoom++;
 
-    const room = this.rooms[this.currentRoom - 1];
+    this.currentRoomData = this.rooms[this.currentRoom - 1];
+    const room = this.currentRoomData;
+   
+    this.createRoomBoundary();
+
+    this.scene.cameras.main.setBackgroundColor(room.background);
 
     this.door = this.scene.add.rectangle(
-      750,
-      400,
+      room.width - 25,
+      room.height / 2,
       40,
       120,
       0xff0000
@@ -60,11 +101,156 @@ export default class RoomManager {
       }
     );
 
-    console.log(`Starting room ${this.currentRoom} with ${room.enemyCount} enemies`);
+    console.log(`Starting room ${this.currentRoom} with ${room.enemies} enemies`);
 
-    for (let i = 0; i < room.enemyCount; i++) {
-      spawnEnemy(this.scene);
+    for (const enemyGroup of room.enemies) {
+      for (let i = 0; i < enemyGroup.count; i++) {
+        spawnEnemy(this.scene, enemyGroup.type);
+      }
     }
+  }
+
+  createRectangularWalls() {
+    const room = this.currentRoomData;
+    const wallThickness = 20;
+    const color = 0x444444;
+
+    const top = this.scene.add.rectangle(
+      room.width / 2,
+      wallThickness / 2,
+      room.width,
+      wallThickness,
+      color
+    );
+
+    const bottom = this.scene.add.rectangle(
+      room.width / 2,
+      room.height - wallThickness / 2,
+      room.width,
+      wallThickness,
+      color
+    );
+
+    const left = this.scene.add.rectangle(
+      wallThickness / 2,
+      room.height / 2,
+      wallThickness,
+      room.height,
+      color
+    );
+
+    const right = this.scene.add. rectangle (
+      room.width - wallThickness / 2,
+      room.height / 2,
+      wallThickness,
+      room.height,
+      color
+    );
+
+    this.walls = [top, bottom, left, right];
+
+    this.scene.physics.add.existing(top, true);
+    this.scene.physics.add.existing(bottom, true);
+    this.scene.physics.add.existing(left, true);
+    this.scene.physics.add.existing(right, true);
+
+    this.walls.forEach(wall => {
+      this.scene.physics.add.collider(
+        this.scene.player.sprite,
+        wall
+      );
+
+      this.scene.physics.add.collider(
+        this.scene.enemies,
+        wall
+      );
+    });
+  }
+
+  createCircularBoundry() {
+    const room = this.currentRoomData;
+
+    const centerX = room.width / 2;
+    const centerY = room.height / 2;
+
+    const radius = Math.min(room.width, room.height) / 2;
+
+    const segmentCount = 64;
+    const wallThickness = 20;
+    const overlap = 6;
+
+    this.walls = [];
+
+    const angleStep = (Math.PI * 2) / segmentCount;
+
+    for (let i = 0; i < segmentCount; i++) {
+      const angle1 = i * angleStep;
+      const angle2 = (i + 1) * angleStep;
+
+      const x1 = centerX + Math.cos(angle1) * radius;
+      const y1 = centerY + Math.sin(angle1) * radius;
+
+      const x2 = centerX + Math.cos(angle2) * radius;
+      const y2 = centerY + Math.sin(angle2) * radius;
+
+      const midpointX = (x1 + x2) / 2;
+      const midpointY = (y1 + y2) / 2;
+
+      const segmentLenght = Phaser.Math.Distance.Between(
+        x1,
+        y1,
+        x2,
+        y2,
+      ) + overlap;
+
+      const wall = this.scene.add.rectangle(
+        midpointX,
+        midpointY,
+        segmentLenght,
+        wallThickness,
+        0x444444,
+      );
+
+      const tangentAngle = Math.atan2(
+        y2 - y1,
+        x2 - x1
+      );
+
+      wall.rotation = tangentAngle;
+
+      this.scene.physics.add.existing(wall, true);
+
+      this.walls.push(wall);
+
+      this.scene.physics.add.collider(
+        this.scene.player.sprite,
+        wall,
+      );
+
+      this.scene.physics.add.collider(
+        this.scene.enemies,
+        wall
+      );
+    }
+  }
+
+  createRoomBoundary() {
+    const shape = this.currentRoomData.shape;
+
+    if(shape === 'rectangle') {
+      this.createRectangularWalls();
+    }
+
+    if (shape === 'circle') {
+      this.createCircularBoundry();
+    }
+  }
+
+  clearRoomWalls() {
+    if (!this.walls) return;
+
+    this.walls.forEach(wall => wall.destroy());
+    this.walls = [];
   }
 
   update() {
@@ -130,7 +316,7 @@ export default class RoomManager {
       this.door.destroy();
       this.door = null;
     }
-
+    this.clearRoomWalls();
     this.clearRewards();
     this.startNextRoom();
   }

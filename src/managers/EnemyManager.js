@@ -6,23 +6,26 @@ import { takeDamage } from "../entities/Entity.js";
 export function createEnemies(scene) {
 
   scene.enemies = scene.physics.add.group();
-
 }
 
-export function spawnEnemy(scene) {
+export function spawnEnemy(scene, enemyType = null) {
   if (scene.isGameOver) return;
+
+  const room = scene.roomManager.currentRoomData;
 
   let rx, ry;
   let dist = 0;
-  const safeRadius = 400;
+  const safeRadius = 250;
 
   do {
-    rx = Phaser.Math.Between(50, 750);
-    ry = Phaser.Math.Between(50, 750);
+    rx = Phaser.Math.Between(50, room.width - 50);
+    ry = Phaser.Math.Between(50, room.height - 50);
     dist = Phaser.Math.Distance.Between(scene.player.x, scene.player.y, rx, ry);
   } while (dist < safeRadius);
 
-  const isBrute = Math.random() < 0.3;
+  // const isBrute = Math.random() < 0.3;
+  // const key = isBrute ? 'purpleBrute' : 'blueEnemy';
+  const isBrute = enemyType === 'brute';
   const key = isBrute ? 'purpleBrute' : 'blueEnemy';
   const sprite = scene.enemies.create(rx, ry, key);
 

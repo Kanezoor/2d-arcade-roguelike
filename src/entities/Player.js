@@ -8,7 +8,7 @@ export default class Player {
 
     this.sprite = scene.physics.add.sprite(400, 300, 'playerSquare');
 
-    this.sprite.setCollideWorldBounds(true);
+    this.sprite.setCollideWorldBounds(false);
 
     this.maxHealth = 100;
     this.health = this.maxHealth;
