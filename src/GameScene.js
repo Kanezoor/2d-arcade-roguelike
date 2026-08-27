@@ -37,7 +37,14 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(
       this.projectiles,
       this.enemies,
-      (bullet, enemy) => hitEnemy(this, bullet, enemy)
+      (bullet, enemy) => {
+        if(bullet.isEnemyProjectile) {
+          return;
+        }
+
+        hitEnemy(this, bullet, enemy)
+
+      }
     );
 
     this.physics.add.overlap(
@@ -57,6 +64,11 @@ export class GameScene extends Phaser.Scene {
       (bullet, bossSprite) => {
         if (bullet.isBossProjectile) return;
 
+        if (bullet.isEnemyProjectile) {
+          bullet.destroy();
+          this.player.takeDamage(bullet);
+        }
+
         bullet.destroy();
         const boss = bossSprite.boss;
 
@@ -68,6 +80,13 @@ export class GameScene extends Phaser.Scene {
       this.player.sprite,
       this.projectiles,
       (playerSprite, bullet) => {
+
+        if (bullet.isEnemyProjectile) {
+          bullet.destroy();
+          this.player.takeDamage(bullet);
+          return;
+        }
+        
         if (!bullet.isBossProjectile) return;
         console.log("BOSS BULLET HIT PLAYER");
         bullet.destroy();

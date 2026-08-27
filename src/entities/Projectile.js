@@ -8,7 +8,7 @@ export default class Projectile {
 
     this.damage = damage;
     this.speed = speed;
-    this.isMagnetic = owner.hasMagneticCore;
+    this.isMagnetic = owner.hasMagneticCore === true;
 
     this.sprite.damage = this.damage;
     this.sprite.isMagnetic = this.isMagnetic;

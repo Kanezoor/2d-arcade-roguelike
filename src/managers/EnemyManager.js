@@ -26,28 +26,57 @@ export function spawnEnemy(scene, enemyType = null) {
   // const isBrute = Math.random() < 0.3;
   // const key = isBrute ? 'purpleBrute' : 'blueEnemy';
   const isBrute = enemyType === 'brute';
-  const key = isBrute ? 'purpleBrute' : 'blueEnemy';
+  const isRanged = enemyType === 'ranged';
+  // const key = isBrute ? 'purpleBrute' : 'blueEnemy';
+  let key;
+
+  if (isRanged) {
+    key = 'rangedEnemy'
+  } else if (isBrute) {
+    key = 'purpleBrute'
+  } else {
+    key = 'blueEnemy'
+  }
+
   const sprite = scene.enemies.create(rx, ry, key);
+  let config;
 
-  const config = isBrute
-    ? {
-        health:6,
-        speed:80,
-        damage:20,
-        score:30,
-        color:0x800080,
-        knockbackResistance:1
-    }
-    : {
-        health:3,
-        speed:200,
-        damage:10,
-        score:10,
-        color:0x0000ff,
-        knockbackResistance:0.35
+  if(isRanged) {
+    config = {
+      health: 2,
+      speed: 200,
+      damage: 8,
+      score: 25,
+      color: 0xffa500,
+      knockbackResistance: 0.2,
+      preferredDistance: 250,
+      state: 'kite',
+      burstShots: 3,
+      burstDelay: 150,
+      burstCooldown: 1500,
+      repositionTime: 500,
     };
+  } else if (isBrute) {
+    config = {
+      health:6,
+      speed:80,
+      damage:20,
+      score:30,
+      color:0x800080,
+      knockbackResistance:1
+    }
+  } else {
+    config = {
+      health:3,
+      speed:200,
+      damage:10,
+      score:10,
+      color:0x0000ff,
+      knockbackResistance:0.35
+    }
+  }
 
-  return new Enemy(sprite, config);
+  return new Enemy(sprite, config, scene);
 }
 
 export function updateEnemies(scene) {
@@ -55,6 +84,53 @@ export function updateEnemies(scene) {
   scene.enemies.getChildren().forEach(sprite => {
 
     const enemy = sprite.enemy;
+    if (enemy.state === 'burst') {
+      enemy.updateBurst();
+      return;
+    }
+
+    if (enemy.state === 'reposition') {
+      enemy.updateReposition();
+      return;
+    }
+
+    if (enemy.state === 'kite') {
+      const distance = Phaser.Math.Distance.Between(
+        sprite.x,
+        sprite.y,
+        scene.player.sprite.x,
+        scene.player.sprite.y
+      );
+
+      const angle = Phaser.Math.Angle.Between(
+        sprite.x,
+        sprite.y,
+        scene.player.sprite.x,
+        scene.player.sprite.y
+      );
+
+      if (distance > enemy.preferredDistance + 30) {
+        sprite.body.setVelocity(
+          Math.cos(angle) * enemy.speed,
+          Math.sin(angle) * enemy.speed,
+        );
+      } else if (distance < enemy.preferredDistance - 30) {
+        sprite.body.setVelocity(
+          -Math.cos(angle) * enemy.speed,
+          -Math.sin(angle) * enemy.speed,
+        );
+      } else {
+        sprite.body.setVelocity(0, 0);
+
+        if (
+          scene.time.now - enemy.lastBurst >= enemy.burstCooldown
+        ) {
+          enemy.startBurst();
+        }
+      }
+      return;
+    }
+
 
     const angle = Phaser.Math.Angle.Between(
       sprite.x,

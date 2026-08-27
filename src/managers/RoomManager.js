@@ -15,6 +15,7 @@ export default class RoomManager {
         background: 0xffffff,
         enemies: [
           {type: 'blue', count: 5},
+          {type: 'ranged', count: 1}
         ],
       },
       {
@@ -38,8 +39,8 @@ export default class RoomManager {
         ],
       },
       {
-        width: 700,
-        height: 700,
+        width: 800,
+        height: 800,
         shape: 'circle',
         background: 0xeee0ff,
         enemies: [
