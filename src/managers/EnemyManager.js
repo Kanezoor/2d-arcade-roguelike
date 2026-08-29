@@ -27,11 +27,14 @@ export function spawnEnemy(scene, enemyType = null) {
   // const key = isBrute ? 'purpleBrute' : 'blueEnemy';
   const isBrute = enemyType === 'brute';
   const isRanged = enemyType === 'ranged';
-  // const key = isBrute ? 'purpleBrute' : 'blueEnemy';
+  const isCharger = enemyType === 'charger';
+
   let key;
 
   if (isRanged) {
     key = 'rangedEnemy'
+  } else if (isCharger) {
+    key = 'chargerEnemy'
   } else if (isBrute) {
     key = 'purpleBrute'
   } else {
@@ -56,7 +59,24 @@ export function spawnEnemy(scene, enemyType = null) {
       burstCooldown: 1500,
       repositionTime: 500,
     };
-  } else if (isBrute) {
+  } else if (isCharger) {
+    config = {
+      health: 15,
+      speed: 110,
+      damage: 10,
+      score: 30,
+      color: 0xff8800,
+      behavior: 'charger',
+      chargeTriggerDistance: 300,
+      chargeTelegraphTime: 600,
+      chargeCooldown: 1800,
+      chargeSpeed: 600,
+      chargeDuration: 500,
+      chargeRecovery: 600,
+      chargeKnockback: 3000,
+    }
+  }
+  else if (isBrute) {
     config = {
       health:6,
       speed:80,
@@ -84,6 +104,11 @@ export function updateEnemies(scene) {
   scene.enemies.getChildren().forEach(sprite => {
 
     const enemy = sprite.enemy;
+
+    if (enemy.behavior === 'charger') {
+      enemy.updateCharger();
+      return;
+    }
     if (enemy.state === 'burst') {
       enemy.updateBurst();
       return;
@@ -157,7 +182,8 @@ export function hitEnemy(scene, bullet, sprite) {
   bullet.destroy();
 
   const enemy = sprite.enemy;
-  enemy.health -= 1;
+  const damage = enemy.isVulnerable ? 2 : 1;
+  enemy.health -= damage;
 
   createParticles(
     scene,

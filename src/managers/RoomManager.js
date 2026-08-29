@@ -14,8 +14,9 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xffffff,
         enemies: [
-          {type: 'blue', count: 5},
-          {type: 'ranged', count: 1}
+          // {type: 'blue', count: 5},
+          // {type: 'ranged', count: 1},
+          {type: 'charger', count: 1}
         ],
       },
       {
@@ -285,7 +286,6 @@ export default class RoomManager {
   }
 
   startBossRoom() {
-    // this.isRunComplete = true;
     this.isBossRoom = true;
     this.isTransitioning = false;
     console.log('Boss encounter starting');

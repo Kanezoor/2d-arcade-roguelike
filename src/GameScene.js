@@ -50,8 +50,36 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(
       this.player.sprite,
       this.enemies,
-      (playerSprite, enemy) => {
-        if (this.player.takeDamage(enemy)) {
+      (playerSprite, enemySprite) => {
+
+        const enemy = enemySprite.enemy;
+
+        if (
+          enemy.behavior === 'charger' &&
+          enemy.state === 'charge'
+        ) {
+
+          if (enemy.hasHitPlayerThisCharge) {
+            return;
+          }
+
+          enemy.hasHitPlayerThisCharge = true;
+
+          if (this.player.takeDamage(enemySprite)) {
+            this.physics.pause();
+            showGameOverScreen(this);
+            return;
+          }
+
+          enemy.sprite.body.setVelocity(0, 0);
+
+          enemy.state = 'chargeRecovery';
+          enemy.chargeTimer = enemy.chargeRecovery;
+
+          return;
+        }
+
+        if (this.player.takeDamage(enemySprite)) {
           this.physics.pause();
           showGameOverScreen(this);
         }

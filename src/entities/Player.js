@@ -13,6 +13,8 @@ export default class Player {
     this.maxHealth = 100;
     this.health = this.maxHealth;
     this.speed = 300;
+    this.kbX = 0;
+    this.kbY = 0;
     this.fireRate = 300;
     this.nextFire = 10;
     this.lastDamageTime = 0;
@@ -56,17 +58,27 @@ export default class Player {
   }
 
   move() {
-    this.sprite.body.setVelocity(0);
+
+    let velocityX = this.kbX;
+    let velocityY = this.kbY;
 
     if (this.cursors.left.isDown) 
-      this.sprite.body.setVelocityX(-this.speed);
+      velocityX -= this.speed;
     else if (this.cursors.right.isDown) 
-      this.sprite.body.setVelocityX(this.speed);;
+      velocityX += this.speed;
 
     if (this.cursors.up.isDown) 
-      this.sprite.body.setVelocityY(-this.speed);
+      velocityY -= this.speed;
     else if (this.cursors.down.isDown)
-      this.sprite.body.setVelocityY(this.speed);
+      velocityY += this.speed;
+
+    this.sprite.body.setVelocity(velocityX, velocityY);
+
+    this.kbX *= 0.99;
+    this.kbY *= 0.99;
+
+    if (Math.abs(this.kbX) < 1) this.kbX = 0;
+    if (Math.abs(this.kbY) < 1) this.kbY = 0;
   }
 
   shoot() {
@@ -97,10 +109,11 @@ export default class Player {
     this.sprite.y
   );
 
-  this.sprite.body.setVelocity(
-    Math.cos(angle) * 400,
-    Math.sin(angle) * 400
-  );
+  const isCharging = source.enemy?.behavior === 'charger' && source.enemy?.state === 'change';
+  const playerKnockback = isCharging ? source.enemy.chargeKnockBack ?? 3000 : 400;
+
+  this.kbX = Math.cos(angle) * playerKnockback;
+  this.kbY = Math.sin(angle) * playerKnockback;
 
   if (source.enemy) {
     const enemy = source.enemy;
