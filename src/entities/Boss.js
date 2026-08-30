@@ -1,3 +1,5 @@
+import Projectile from "./Projectile.js";
+
 export default class Boss {
 
   constructor(sprite, scene) {
@@ -115,14 +117,17 @@ export default class Boss {
     ];
 
     angles.forEach(angle => {
-      const bullet = this.scene.projectiles.create(this.sprite.x, this.sprite.y, "bullet");
-      
-      const speed = 250;
-
-      bullet.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-      
-      bullet.damage = 1;
-      bullet.isBossProjectile = true;
+      new Projectile(
+        this.scene,
+        this.sprite.x,
+        this.sprite.y,
+        'bullet',
+        1,
+        250,
+        angle,
+        this,
+        'enemy'
+      );
     });
 
 
@@ -145,17 +150,17 @@ export default class Boss {
       player.y
     );
 
-    const bullet = this.scene.projectiles.create(this.sprite.x, this.sprite.y, 'bullet');
-
-    const speed = 500;
-
-    bullet.body.setVelocity(
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed
+    new Projectile(
+      this.scene,
+      this.sprite.x,
+      this.sprite.y,
+      'bullet',
+      1,
+      500,
+      angle,
+      this,
+      'enemy'
     );
-
-    bullet.damage = 1;
-    bullet.isBossProjectile = true;
   }
 
   die() {

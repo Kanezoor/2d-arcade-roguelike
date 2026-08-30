@@ -1,17 +1,33 @@
 export default class Projectile {
-  constructor(scene, x, y, texture, damage, speed, angle, owner) {
+  constructor(
+    scene,
+    x,
+    y,
+    texture,
+    damage,
+    speed,
+    angle,
+    owner,
+    team = 'player'
+  ) {
     this.scene = scene;
     this.owner = owner;
+
     this.sprite = scene.projectiles.create(
-      x, y, texture
+      x,
+      y,
+      texture
     );
 
     this.damage = damage;
     this.speed = speed;
     this.isMagnetic = owner.hasMagneticCore === true;
+    this.team = team;
 
     this.sprite.damage = this.damage;
     this.sprite.isMagnetic = this.isMagnetic;
+    this.sprite.owner = owner;
+    this.sprite.team = team;
 
     this.sprite.body.setVelocity(
       Math.cos(angle) * this.speed,

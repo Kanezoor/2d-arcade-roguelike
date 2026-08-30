@@ -14,8 +14,8 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xffffff,
         enemies: [
-          // {type: 'blue', count: 5},
-          // {type: 'ranged', count: 1},
+          {type: 'blue', count: 5},
+          {type: 'ranged', count: 1},
           {type: 'charger', count: 1}
         ],
       },
@@ -25,8 +25,9 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xe8e8e8,
         enemies: [
-          {type: 'blue', count: 5},
-          {type: 'brute', count: 1},
+          // {type: 'blue', count: 5},
+          // {type: 'brute', count: 1},
+          {type: 'blue', count: 1}
         ],
       },
       {
@@ -35,8 +36,9 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xdfefff,
         enemies: [
-          {type: 'blue', count: 4},
-          {type: 'brute', count: 2},
+          // {type: 'blue', count: 4},
+          // {type: 'brute', count: 2},
+          {type: 'blue', count: 1}
         ],
       },
       {
@@ -45,8 +47,9 @@ export default class RoomManager {
         shape: 'circle',
         background: 0xeee0ff,
         enemies: [
-          {type: 'blue', count: 2},
-          {type: 'brute', count: 4}
+          // {type: 'blue', count: 2},
+          // {type: 'brute', count: 4}
+          {type: 'blue', count: 1}
         ],
       }
     ];
@@ -293,6 +296,7 @@ export default class RoomManager {
     const bossSprite = this.scene.bosses.create(400, 100, 'boss');
 
     this.boss = new Boss(bossSprite, this.scene);
+
     console.log('Boss encounter!')
   }
 

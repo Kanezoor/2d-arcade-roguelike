@@ -74,8 +74,8 @@ export default class Player {
 
     this.sprite.body.setVelocity(velocityX, velocityY);
 
-    this.kbX *= 0.99;
-    this.kbY *= 0.99;
+    this.kbX *= 0.95;
+    this.kbY *= 0.95;
 
     if (Math.abs(this.kbX) < 1) this.kbX = 0;
     if (Math.abs(this.kbY) < 1) this.kbY = 0;

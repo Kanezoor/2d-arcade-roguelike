@@ -52,7 +52,8 @@ export default class Shotgun {
         this.damage,
         this.projectileSpeed,
         angle,
-        this.owner
+        this.owner,
+        'player'
       );
     });
 

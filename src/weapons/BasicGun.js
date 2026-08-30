@@ -29,6 +29,7 @@ export default class BasicGun extends Weapon {
       this.stats.projectileSpeed,
       angle,
       this.owner,
+      'player'
     );
 
     this.nextFire = this.scene.time.now + this.stats.fireRate;

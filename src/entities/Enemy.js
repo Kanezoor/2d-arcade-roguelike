@@ -1,3 +1,5 @@
+import Projectile from "./Projectile.js";
+
 export default class Enemy {
 
   constructor(sprite, config, scene) {
@@ -66,21 +68,20 @@ export default class Enemy {
       player.y
     );
 
-    const bullet = this.scene.projectiles.create(
-      this.sprite.x,
-      this.sprite.y,
-      'bullet'
-    );
-
     const speed = 666;
 
-    bullet.body.setVelocity(
-      Math.cos(angle) * speed,
-      Math.sin(angle) * speed,
+    new Projectile(
+      this.scene,
+      this.sprite.x,
+      this.sprite.y,
+      'bullet',
+      this.damage,
+      speed,
+      angle,
+      this,
+      'enemy'
     );
 
-    bullet.damage = this.damage;
-    bullet.isEnemyProjectile = true;
   }
 
   updateBurst() {
@@ -134,7 +135,7 @@ export default class Enemy {
 
     this.isVulnerable = false;
     this.sprite.clearTint();
-    
+
     this.state = 'telegraph';
     this.chargeTimer = this.chargeTelegraphTime;
     this.sprite.body.setVelocity(0, 0)
