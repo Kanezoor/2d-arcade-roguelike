@@ -25,9 +25,9 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xe8e8e8,
         enemies: [
-          // {type: 'blue', count: 5},
-          // {type: 'brute', count: 1},
-          {type: 'blue', count: 1}
+          {type: 'blue', count: 5},
+          {type: 'brute', count: 1},
+          // {type: 'blue', count: 1}
         ],
       },
       {
@@ -335,7 +335,8 @@ export default class RoomManager {
 
     this.scene.rewards.add(sprite);
 
-    new Reward(sprite, 'magneticCore');
+    // new Reward(sprite, 'magneticCore');
+    new Reward(sprite, 'piercingCore');
 
     console.log('Reward spawned');
   }

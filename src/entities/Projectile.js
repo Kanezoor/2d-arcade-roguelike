@@ -21,11 +21,16 @@ export default class Projectile {
 
     this.damage = damage;
     this.speed = speed;
-    this.isMagnetic = owner.hasMagneticCore === true;
+    this.isMagnetic = owner.hasPassive?.('magneticCore') === true;
+    this.isPiercing = owner.hasPassive?.('piercingCore') === true;
+    this.hitTargets = new Set();
+    this.remainingHits = this.isPiercing ? 2 : 1;
+
     this.team = team;
 
     this.sprite.damage = this.damage;
     this.sprite.isMagnetic = this.isMagnetic;
+    this.sprite.isPiercing = this.isPiercing;
     this.sprite.owner = owner;
     this.sprite.team = team;
 
@@ -35,6 +40,21 @@ export default class Projectile {
     );
 
     this.sprite.projectile = this;
+  }
+
+  canHitTarget(target) {
+    return !this.hitTargets.has(target);
+  }
+
+  registerHit(target) {
+    if (!this.canHitTarget(target)) {
+      return false;
+    }
+
+    this.hitTargets.add(target);
+    this.remainingHits--;
+
+    return true;
   }
 
   update() {

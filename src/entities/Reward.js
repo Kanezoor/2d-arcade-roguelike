@@ -13,7 +13,11 @@ export default class Reward {
     }
 
     if (this.type === 'magneticCore') {
-      player.hasMagneticCore = true;
+      player.addPassive('magneticCore');
+    }
+
+    if (this.type === 'piercingCore') {
+      player.addPassive('piercingCore');
     }
   }
 }

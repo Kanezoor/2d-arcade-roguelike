@@ -29,9 +29,6 @@ export default class Player {
     this.rightWeapon = null;
     this.passiveItems = [];
 
-    this.hasMagneticCore = false;
-
-
     this.cursors = scene.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
       down: Phaser.Input.Keyboard.KeyCodes.S,
@@ -42,6 +39,15 @@ export default class Player {
 
   }
 
+  hasPassive(passiveId) {
+    return this.passiveItems.includes(passiveId);
+  }
+
+  addPassive(passiveId) {
+    if (!this.hasPassive(passiveId)) {
+      this.passiveItems.push(passiveId);
+    }
+  }
   update() {
     if (this.scene.isGameOver) return;
 

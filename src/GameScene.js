@@ -42,8 +42,21 @@ export class GameScene extends Phaser.Scene {
           return;
         }
 
-        hitEnemy(this, bullet, enemySprite)
+        const projectile = bullet.projectile;
 
+        if (!projectile) {
+          return;
+        }
+
+        if (!projectile.registerHit(enemySprite)) {
+          return;
+        }
+
+        hitEnemy(this, bullet, enemySprite);
+
+        if (projectile.remainingHits <= 0) {
+          bullet.destroy();
+        }
       }
     );
 
@@ -128,8 +141,7 @@ export class GameScene extends Phaser.Scene {
 
         const reward = rewardSprite.reward;
         reward.applyTo(this.player);
-
-        console.log('Magnetic core: ', this.player.hasMagneticCore);
+        console.log('Piercing Core: ', this.player.hasPassive('piercingCore'));
         rewardSprite.destroy();
 
         console.log(

@@ -179,10 +179,8 @@ export function updateEnemies(scene) {
 
 export function hitEnemy(scene, bullet, sprite) {
 
-  bullet.destroy();
-
   const enemy = sprite.enemy;
-  const damage = enemy.isVulnerable ? 2 : 1;
+  const damage = enemy.isVulnerable ? bullet.damage * 2 : bullet.damage;
   enemy.health -= damage;
 
   createParticles(
