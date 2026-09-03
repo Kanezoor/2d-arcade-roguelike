@@ -25,6 +25,7 @@ export default class Player {
 
     this.basicWeapon = WeaponFactory.create('basic_gun', this);
     this.shotgun = WeaponFactory.create('shotgun', this);
+    this.laserGun = WeaponFactory.create('laser_gun', this);
     this.leftWeapon = this.basicWeapon;
     this.rightWeapon = null;
     this.passiveItems = [];
@@ -35,7 +36,7 @@ export default class Player {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D
     });
-    this.switchKeys = this.scene.input.keyboard.addKeys('ONE,TWO');
+    this.switchKeys = this.scene.input.keyboard.addKeys('ONE,TWO,THREE');
 
   }
 
@@ -59,8 +60,16 @@ export default class Player {
       this.leftWeapon = this.shotgun;
     }
 
+    if (Phaser.Input.Keyboard.JustDown(this.switchKeys.THREE)) {
+      this.leftWeapon = this.laserGun;
+    }
+
     this.move();
     this.shoot();
+
+    if (this.leftWeapon?.update) {
+      this.leftWeapon.update(this.scene.input.activePointer);
+    }
   }
 
   move() {

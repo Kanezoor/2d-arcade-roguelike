@@ -7,11 +7,17 @@ export default class DamageContext {
     baseDamage,
     type = DamageType.PHYSICAL,
     critical = false,
+    hitX = null,
+    hitY = null,
+    knockBackStrength = 0,
   }) {
     this.source = source;
     this.target = target;
     this.baseDamage = baseDamage;
     this.type = type;
     this.critical = critical;
+    this.hitX = hitX;
+    this.hitY = hitY;
+    this.knockbackStrength = knockBackStrength;
   }
 }

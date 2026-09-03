@@ -1,4 +1,6 @@
 import Projectile from "./Projectile.js";
+import DamageContext from "../combat/DamageContext.js";
+import { createParticles } from "../particles.js";
 
 export default class Enemy {
 
@@ -252,6 +254,55 @@ export default class Enemy {
     );
 
     console.log('CHARGER CHARGE');
+  }
+
+  takeDamage(context) {
+    this.health -= context.baseDamage;
+
+    createParticles(
+      this.scene,
+      context.hitX ?? this.sprite.x,
+      context.hitY ?? this.sprite.y,
+      0xffffff,
+      5
+    );
+
+    if (context.knockbackStrength > 0) {
+      const angle = Phaser.Math.Angle.Between(
+        context.hitX ?? this.sprite.x,
+        context.hitY ?? this.sprite.y,
+        this.sprite.x,
+        this.sprite.y
+      );
+
+      this.xbX +=
+        Math.cos(angle) *
+        context.knockbackStrength *
+        this.knockbackResistance;
+
+      this.xbY +=
+        Math.sin(angle) *
+        context.knockbackStrength *
+        this.knockbackResistance;
+    }
+
+    if (this.health <= 0) {
+      this.health = 0;
+
+      createParticles(
+        this.scene,
+        this.sprite.x,
+        this.sprite.y,
+        this.color,
+        20
+      );
+
+      this.sprite.destroy();
+
+      this.scene.score += this.score;
+
+      this.scene.scoreText.setText('Score: ' + this.scene.score);
+    }
   }
 
 }

@@ -1,7 +1,9 @@
-import DamageSystem from "../combat/DamageSystem.js";
 import { createParticles } from "../particles.js";
 import Enemy from "../entities/Enemy.js";
 import { takeDamage } from "../entities/Entity.js";
+import DamageSystem from "../combat/DamageSystem.js";
+import DamageContext from "../combat/DamageContext.js";
+import DamageType from "../combat/DamageType.js";
 
 export function createEnemies(scene) {
 
@@ -180,52 +182,16 @@ export function updateEnemies(scene) {
 export function hitEnemy(scene, bullet, sprite) {
 
   const enemy = sprite.enemy;
-  const damage = enemy.isVulnerable ? bullet.damage * 2 : bullet.damage;
-  enemy.health -= damage;
 
-  createParticles(
-    scene,
-    bullet.x,
-    bullet.y,
-    0xffffff,
-    5
-  );
+  const context = new DamageContext({
+    source: bullet,
+    target: enemy,
+    baseDamage: bullet.damage,
+    type: DamageType.PHYSICAL,
+    hitX: bullet.x,
+    hitY: bullet.y,
+    knockBackStrength: 250,
+  });
 
-  const angle = Phaser.Math.Angle.Between(
-    bullet.x,
-    bullet.y,
-    sprite.x,
-    sprite.y
-  );
-
-  const knockbackStrength = 250;
-
-  enemy.kbX +=
-    Math.cos(angle) *
-    knockbackStrength *
-    enemy.knockbackResistance;
-
-  enemy.kbY +=
-    Math.sin(angle) *
-    knockbackStrength *
-    enemy.knockbackResistance;
-
-  if (enemy.health <= 0) {
-
-    createParticles(
-      scene,
-      sprite.x,
-      sprite.y,
-      enemy.color,
-      20
-    );
-
-    sprite.destroy();
-
-    scene.score += enemy.score;
-
-    scene.scoreText.setText(
-      'Score: ' + scene.score
-    );
-  }
+  DamageSystem.apply(context);
 }

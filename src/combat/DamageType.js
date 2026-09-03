@@ -4,7 +4,8 @@ const DamageType = Object.freeze ({
   ICE: 'ice',
   POISON: 'poison',
   CORROSION: 'corrosion',
-  ELECTRIC: 'electric'
+  ELECTRIC: 'electric',
+  LASER: 'laser'
 });
 
 export default DamageType;

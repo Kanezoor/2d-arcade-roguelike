@@ -4,6 +4,7 @@ import { hitEnemy, createEnemies, updateEnemies } from "./managers/EnemyManager.
 import Boss from "./entities/Boss.js";
 import RoomManager from "./managers/RoomManager.js";
 import { createUI, drawUI, showGameOverScreen, showVictoryScreen } from "./ui.js";
+import Beam from "./entities/Beam.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -33,6 +34,15 @@ export class GameScene extends Phaser.Scene {
     this.score = 0;
 
     this.isGameOver = false;
+
+    this.testBeam = new Beam(
+      this,
+      this.player,
+      1,
+      500
+    );
+
+    this.testBeam.start();
 
     this.physics.add.overlap(
       this.projectiles,
@@ -178,5 +188,6 @@ export class GameScene extends Phaser.Scene {
         bullet.projectile.update();
       }
     });
+
   }
 }
