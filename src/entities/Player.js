@@ -1,5 +1,3 @@
-import { showGameOverScreen } from "../ui.js";
-import BasicGun from "../weapons/BasicGun.js"
 import WeaponFactory from "../weapons/WeaponFactory.js";
 
 export default class Player {
@@ -53,14 +51,17 @@ export default class Player {
     if (this.scene.isGameOver) return;
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKeys.ONE)) {
+      this.leftWeapon?.stop?.();
       this.leftWeapon = this.basicWeapon;
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKeys.TWO)) {
+      this.leftWeapon?.stop?.();
       this.leftWeapon = this.shotgun;
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKeys.THREE)) {
+      this.leftWeapon.stop?.();
       this.leftWeapon = this.laserGun;
     }
 

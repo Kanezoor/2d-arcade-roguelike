@@ -1,7 +1,3 @@
-import basicGun from "./definitions/basicGun.js";
-import DamageSystem from "../combat/DamageSystem.js"
-import DamageContext from "../combat/DamageContext.js";
-
 export default class Weapon {
   constructor(owner) {
     this.owner = owner;
@@ -35,6 +31,10 @@ export default class Weapon {
 
   shoot(pointer) {
     
+  }
+
+  stop() {
+
   }
 }
 

@@ -1,10 +1,11 @@
 import { createTextures } from "./textures.js";
 import Player from "./entities/Player.js";
 import { hitEnemy, createEnemies, updateEnemies } from "./managers/EnemyManager.js";
-import Boss from "./entities/Boss.js";
 import RoomManager from "./managers/RoomManager.js";
 import { createUI, drawUI, showGameOverScreen, showVictoryScreen } from "./ui.js";
-import Beam from "./entities/Beam.js";
+import DamageSystem from "./combat/DamageSystem.js";
+import DamageContext from "./combat/DamageContext.js";
+import DamageType from "./combat/DamageType.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -34,15 +35,6 @@ export class GameScene extends Phaser.Scene {
     this.score = 0;
 
     this.isGameOver = false;
-
-    this.testBeam = new Beam(
-      this,
-      this.player,
-      1,
-      500
-    );
-
-    this.testBeam.start();
 
     this.physics.add.overlap(
       this.projectiles,
@@ -118,10 +110,25 @@ export class GameScene extends Phaser.Scene {
           return;
         }
 
+        if (!bossSprite.active) {
+          return;
+        }
+
         bullet.destroy();
 
         const boss = bossSprite.boss;
-        boss.takeDamage(bullet.damage);
+        
+        const context = new DamageContext({
+          source: bullet,
+          target: boss,
+          baseDamage: bullet.damage,
+          type: DamageType.PHYSICAL,
+          hitX: bullet.x,
+          hitY: bullet.y,
+          knockbackStrength: 0,
+        });
+
+        DamageSystem.apply(context);
       }
     );
 

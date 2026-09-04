@@ -37,4 +37,8 @@ export default class LaserGun extends Weapon {
   destroy() {
     this.beam.destroy();
   }
+
+  stop() {
+    this.beam.stop();
+  }
 }

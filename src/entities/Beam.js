@@ -62,6 +62,7 @@ export default class Beam {
     );
 
     this.checkEnemyCollisions(beamLine);
+    this.checkBossCollisions(beamLine);
   }
 
   checkEnemyCollisions(beamLine) {
@@ -98,5 +99,47 @@ export default class Beam {
 
       DamageSystem.apply(context);
     })
+  }
+
+  checkBossCollisions(beamLine) {
+    const now = this.scene.time.now;
+
+    this.scene.bosses.getChildren().forEach(bossSprite => {
+      if (!bossSprite.active) {
+        return;
+      }
+
+      const boss = bossSprite.boss;
+
+      if (!boss || boss.isDead) {
+        return;
+      }
+
+      const bounds = bossSprite.getBounds();
+
+      if (!Phaser.Geom.Intersects.LineToRectangle(beamLine, bounds)) {
+        return;
+      }
+
+      const lastDamageTime = this.lastDamageTimes.get(bossSprite) ?? -Infinity;
+
+      if (now - lastDamageTime < this.damageInterval) {
+        return;
+      }
+
+      this.lastDamageTimes.set(bossSprite, now);
+
+      const context = new DamageContext({
+        source: this,
+        target: boss,
+        baseDamage: this.damage,
+        type: DamageType.LASER,
+        hitX: bossSprite.x,
+        hitY: bossSprite.y,
+        knockBackStrength: 0,
+      });
+
+      DamageSystem.apply(context);
+    });
   }
 }

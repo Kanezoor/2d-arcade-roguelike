@@ -1,6 +1,4 @@
-import { createParticles } from "../particles.js";
 import Enemy from "../entities/Enemy.js";
-import { takeDamage } from "../entities/Entity.js";
 import DamageSystem from "../combat/DamageSystem.js";
 import DamageContext from "../combat/DamageContext.js";
 import DamageType from "../combat/DamageType.js";

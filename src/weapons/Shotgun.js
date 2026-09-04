@@ -24,8 +24,6 @@ export default class Shotgun {
   shoot(pointer) {
     if (!this.canShoot()) return;
 
-    console.log(`Firing weapon: ${this.name}`);
-
     const baseAngle = Phaser.Math.Angle.Between(
       this.owner.sprite.x,
       this.owner.sprite.y,

@@ -11,8 +11,6 @@ export default class BasicGun extends Weapon {
   shoot(pointer) {
     if (!this.canShoot()) return;
 
-    console.log(`Firing weapon: ${this.name}`);
-
     const angle = Phaser.Math.Angle.Between(
       this.owner.sprite.x,
       this.owner.sprite.y,

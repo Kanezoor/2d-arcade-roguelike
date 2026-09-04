@@ -1,5 +1,4 @@
 import Projectile from "./Projectile.js";
-
 export default class Boss {
 
   constructor(sprite, scene) {
@@ -85,11 +84,11 @@ export default class Boss {
     }
   }
 
-  takeDamage(amount) {
+  takeDamage(context) {
 
     if (this.isDead) return;
 
-    this.health -= amount;
+    this.health -= context.baseDamage;
 
     if (this.health <= 0) {
       this.health = 0;

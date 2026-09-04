@@ -106,8 +106,6 @@ export default class RoomManager {
       }
     );
 
-    console.log(`Starting room ${this.currentRoom} with ${room.enemies} enemies`);
-
     for (const enemyGroup of room.enemies) {
       for (let i = 0; i < enemyGroup.count; i++) {
         spawnEnemy(this.scene, enemyGroup.type);
@@ -279,7 +277,6 @@ export default class RoomManager {
 
     this.isRoomCleared = true;
     this.isDoorOpen = true;
-    console.log(`Room ${this.currentRoom} complete`);
 
     this.spawnReward();
 
@@ -291,13 +288,11 @@ export default class RoomManager {
   startBossRoom() {
     this.isBossRoom = true;
     this.isTransitioning = false;
-    console.log('Boss encounter starting');
 
     const bossSprite = this.scene.bosses.create(400, 100, 'boss');
 
     this.boss = new Boss(bossSprite, this.scene);
 
-    console.log('Boss encounter!')
   }
 
   bossDefeated() {
@@ -314,7 +309,6 @@ export default class RoomManager {
       return;
     }
 
-    console.log(`Leaving room ${this.currentRoom}`);
     this.isTransitioning = true;
 
     if (this.door) {

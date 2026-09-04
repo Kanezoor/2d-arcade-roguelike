@@ -1,5 +1,4 @@
 import Projectile from "./Projectile.js";
-import DamageContext from "../combat/DamageContext.js";
 import { createParticles } from "../particles.js";
 
 export default class Enemy {
@@ -141,7 +140,6 @@ export default class Enemy {
     this.state = 'telegraph';
     this.chargeTimer = this.chargeTelegraphTime;
     this.sprite.body.setVelocity(0, 0)
-    console.log('Charger TELEGRAPH');
   }
 
   updateCharger() {
@@ -187,7 +185,6 @@ export default class Enemy {
       this.chargeTimer -= delta;
 
       if (this.chargeTimer <= 0) {
-        console.log('Charger Ready');
         this.startCharge();
       }
 
@@ -207,7 +204,6 @@ export default class Enemy {
         this.isVulnerable = true;
         this.sprite.setTint(0xffff00);
 
-        console.log('CHARGER RECOVERY - VULNERABLE');
       }
 
       return;
@@ -225,7 +221,6 @@ export default class Enemy {
         this.state = 'chase';
         this.isVulnerable = false;
         this.sprite.clearTint();
-        console.log('CHARGER BACK TO CHASE');
       }
 
       return;
@@ -253,7 +248,6 @@ export default class Enemy {
       Math.sin(this.chargeAngle) * this.chargeSpeed
     );
 
-    console.log('CHARGER CHARGE');
   }
 
   takeDamage(context) {
