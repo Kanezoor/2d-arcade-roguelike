@@ -6,6 +6,7 @@ import { createUI, drawUI, showGameOverScreen, showVictoryScreen } from "./ui.js
 import DamageSystem from "./combat/DamageSystem.js";
 import DamageContext from "./combat/DamageContext.js";
 import DamageType from "./combat/DamageType.js";
+import LevelUpManager from "./managers/LevelUpManager.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -22,10 +23,13 @@ export class GameScene extends Phaser.Scene {
     createTextures(this);
 
     this.player = new Player(this);
+    this.levelUpManager = new LevelUpManager(this);
+    this.isLevelUpOpen = false;
 
     createUI(this);
 
     createEnemies(this);
+
     this.bosses = this.physics.add.group();
     this.roomManager = new RoomManager(this);
     this.projectiles = this.physics.add.group();
@@ -35,6 +39,72 @@ export class GameScene extends Phaser.Scene {
     this.score = 0;
 
     this.isGameOver = false;
+
+    this.physics.add.collider(
+      this.player.sprite,
+      this.enemies,
+      (playerSprite, enemySprite) => {
+
+        const enemy = enemySprite.enemy;
+
+        if (!enemy) {
+          return;
+        }
+
+        const isCharging = 
+          enemy.behavior === 'charger' &&
+          enemy.state === 'charge';
+
+        if (isCharging && enemy.hasHitPlayerThisCharge) {
+          return;
+        }
+
+        const hitReactionDistance = isCharging 
+          ? enemy.chargeHitReactionDistance
+          : enemy.hitReactionDistance;
+        
+        const hitPushDuration = isCharging
+          ? enemy.chargeHitPushDuration
+          : enemy.hitPushDuration;
+
+        const hitStunDuration = isCharging
+          ? enemy.chargeHitStunDuration
+          : enemy.hitStunDuration;
+        
+        const context = new DamageContext({
+          source: enemySprite,
+          target: this.player,
+          baseDamage: enemy.damage,
+          type: DamageType.PHYSICAL,
+          hitX: enemySprite.x,
+          hitY: enemySprite.y,
+          hitReactionDistance,
+          hitPushDuration,
+          hitStunDuration,
+        });
+
+        const playerDied = 
+          DamageSystem.apply(context);
+
+        if (playerDied) {
+          this.physics.pause();
+          showGameOverScreen(this);
+          return;
+        }
+
+        if (isCharging) {
+          enemy.hasHitPlayerThisCharge = true;
+
+          enemy.sprite.body.setVelocity(0, 0);
+
+          enemy.state = 'chargeRecovery';
+          enemy.chargeTimer = enemy.chargeRecovery;
+
+          enemy.isVulnerable = true;
+          enemy.sprite.setTint(0xffff00);
+        }
+      }
+    );
 
     this.physics.add.overlap(
       this.projectiles,
@@ -62,44 +132,6 @@ export class GameScene extends Phaser.Scene {
       }
     );
 
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.enemies,
-      (playerSprite, enemySprite) => {
-
-        const enemy = enemySprite.enemy;
-
-        if (
-          enemy.behavior === 'charger' &&
-          enemy.state === 'charge'
-        ) {
-
-          if (enemy.hasHitPlayerThisCharge) {
-            return;
-          }
-
-          enemy.hasHitPlayerThisCharge = true;
-
-          if (this.player.takeDamage(enemySprite)) {
-            this.physics.pause();
-            showGameOverScreen(this);
-            return;
-          }
-
-          enemy.sprite.body.setVelocity(0, 0);
-
-          enemy.state = 'chargeRecovery';
-          enemy.chargeTimer = enemy.chargeRecovery;
-
-          return;
-        }
-
-        if (this.player.takeDamage(enemySprite)) {
-          this.physics.pause();
-          showGameOverScreen(this);
-        }
-      }
-    );
 
     this.physics.add.overlap(
       this.projectiles,
@@ -136,14 +168,34 @@ export class GameScene extends Phaser.Scene {
       this.player.sprite,
       this.projectiles,
       (playerSprite, bullet) => {
-
+        
         if (bullet.team !== 'enemy') {
           return;
         }
 
+        const projectile = bullet.projectile;
+
+        const context = new DamageContext({
+          source: bullet,
+          target: this.player,
+          baseDamage: bullet.damage,
+          type: DamageType.PHYSICAL,
+          hitX: bullet.x,
+          hitY: bullet.y,
+          hitReactionDistance:
+            projectile?.hitReactionDistance ?? 0,
+          hitStunDuration:
+            projectile?.hitStunDuration ?? 0,
+          hitPushDuration:
+            projectile?.hitPushDuration ?? 0,
+        });
+        
         bullet.destroy();
 
-        if (this.player.takeDamage(bullet)) {
+        const playerDied = 
+          DamageSystem.apply(context);
+      
+        if (playerDied) {
           this.physics.pause();
           showGameOverScreen(this);
         }
@@ -174,6 +226,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
+    if (this.isLevelUpOpen) {
+      return;
+    }
+
     this.player.update();
     updateEnemies(this);
 

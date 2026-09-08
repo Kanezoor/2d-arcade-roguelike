@@ -58,6 +58,10 @@ export function spawnEnemy(scene, enemyType = null) {
       burstDelay: 150,
       burstCooldown: 1500,
       repositionTime: 500,
+      xp: 30,
+      hitReactionDistance: 10,
+      hitPushDuration: 50,
+      hitStunDuration: 80,
     };
   } else if (isCharger) {
     config = {
@@ -74,6 +78,13 @@ export function spawnEnemy(scene, enemyType = null) {
       chargeDuration: 500,
       chargeRecovery: 600,
       chargeKnockback: 3000,
+      xp: 40,
+      hitReactionDistance: 25,
+      hitPushDuration: 80,
+      hitStunDuration: 120,
+      chargeHitReactionDistance: 110,
+      chargeHitPushDuration: 120,
+      chargeHitStunDuration: 300,
     }
   }
   else if (isBrute) {
@@ -83,7 +94,10 @@ export function spawnEnemy(scene, enemyType = null) {
       damage:20,
       score:30,
       color:0x800080,
-      knockbackResistance:1
+      knockbackResistance:1,
+      xp: 35,
+      hitReactionDistance: 35,
+      hitStunDuration: 160,
     }
   } else {
     config = {
@@ -92,7 +106,10 @@ export function spawnEnemy(scene, enemyType = null) {
       damage:10,
       score:10,
       color:0x0000ff,
-      knockbackResistance:0.35
+      knockbackResistance:0.35,
+      xp: 20,
+      hitReactionDistance: 20,
+      hitStunDuration: 120,
     }
   }
 

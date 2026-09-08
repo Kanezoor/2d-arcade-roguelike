@@ -1,4 +1,5 @@
 import WeaponFactory from "../weapons/WeaponFactory.js";
+import HitReaction from "../combat/HitReaction.js";
 
 export default class Player {
   constructor(scene) {
@@ -11,8 +12,8 @@ export default class Player {
     this.maxHealth = 100;
     this.health = this.maxHealth;
     this.speed = 300;
-    this.kbX = 0;
-    this.kbY = 0;
+    this.knockbackResistance = 0;
+    this.hitReaction = new HitReaction(this);
     this.fireRate = 300;
     this.nextFire = 10;
     this.lastDamageTime = 0;
@@ -20,6 +21,7 @@ export default class Player {
     this.currency = 0;
     this.level = 0;
     this.experience = 0;
+    this.experienceToNextLevel = 100;
 
     this.basicWeapon = WeaponFactory.create('basic_gun', this);
     this.shotgun = WeaponFactory.create('shotgun', this);
@@ -75,26 +77,26 @@ export default class Player {
 
   move() {
 
-    let velocityX = this.kbX;
-    let velocityY = this.kbY;
+    const delta = this.scene.game.loop.delta;
 
-    if (this.cursors.left.isDown) 
+    if (this.hitReaction.update(delta)) {
+      return;
+    }
+
+    let velocityX = 0;
+    let velocityY = 0
+
+    if (this.cursors.left.isDown)
       velocityX -= this.speed;
-    else if (this.cursors.right.isDown) 
+    else if (this.cursors.right.isDown)
       velocityX += this.speed;
 
-    if (this.cursors.up.isDown) 
+    if (this.cursors.up.isDown)
       velocityY -= this.speed;
     else if (this.cursors.down.isDown)
       velocityY += this.speed;
 
     this.sprite.body.setVelocity(velocityX, velocityY);
-
-    this.kbX *= 0.95;
-    this.kbY *= 0.95;
-
-    if (Math.abs(this.kbX) < 1) this.kbX = 0;
-    if (Math.abs(this.kbY) < 1) this.kbY = 0;
   }
 
   shoot() {
@@ -105,52 +107,102 @@ export default class Player {
     }
   }
 
-  takeDamage(source) {
+  gainExperience(amount) {
+    this.experience += amount;
 
-  if (this.scene.time.now - this.lastDamageTime < this.damageCooldown)
-    return false;
+    console.log(
+      'XP gained',
+      amount,
+      'Total XP:',
+      this.experience,
+    );
 
-  this.lastDamageTime = this.scene.time.now;
+    if (this.experience >= this.experienceToNextLevel) {
+      this.experience -= this.experienceToNextLevel;
 
-  const damage = source.enemy ? source.enemy.damage : source.damage;
+      this.level++;
 
-  this.health -= damage;
-  console.log('Player damage: ', damage);
-  console.log("Player health:", this.health);
+      this.experienceToNextLevel = 100 + this.level * 50;
 
-  const angle = Phaser.Math.Angle.Between(
-    source.x,
-    source.y,
-    this.sprite.x,
-    this.sprite.y
-  );
+      console.log(
+        'LEVEL UP',
+        'Level: ',
+        this.level,
+        'Next level: ',
+        this.experienceToNextLevel,
+      );
 
-  const isCharging = source.enemy?.behavior === 'charger' && source.enemy?.state === 'change';
-  const playerKnockback = isCharging ? source.enemy.chargeKnockBack ?? 3000 : 400;
-
-  this.kbX = Math.cos(angle) * playerKnockback;
-  this.kbY = Math.sin(angle) * playerKnockback;
-
-  if (source.enemy) {
-    const enemy = source.enemy;
-    const enemyKnockback = 3000;
-
-    enemy.kbX = -Math.cos(angle) * enemyKnockback;
-    enemy.kbY = -Math.sin(angle) * enemyKnockback;
-  }
-  
-
-  if (this.health <= 0) {
-
-    this.health = 0;
-
-    this.die();
-
-    return true;
+      this.scene.levelUpManager.show();
+    }
   }
 
-  return false;
-}
+  takeDamage(context) {
+    const sourceX =
+      context.hitX ??
+      context.source?.x ??
+      this.sprite.x;
+
+    const sourceY = 
+      context.hitY ??
+      context.source?.y ??
+      this.sprite.y;
+
+    const angle = Phaser.Math.Angle.Between(
+      sourceX,
+      sourceY,
+      this.sprite.x,
+      this.sprite.y,
+    );
+
+    const knockbackMultiplier = 
+      1 - this.knockbackResistance;
+    
+      const distance =
+        context.hitReactionDistance *
+        knockbackMultiplier;
+
+      this.hitReaction.start(
+        distance,
+        context.hitPushDuration,
+        context.hitStunDuration,
+        angle,
+      );
+
+      if (this.scene.time.now - this.lastDamageTime < this.damageCooldown) {
+        return false;
+      }
+
+      this.lastDamageTime = this.scene.time.now;
+
+      this.health -= context.baseDamage;
+
+      console.log(
+        'Player damage: ',
+        context.baseDamage,
+      );
+
+      console.log(
+        'Player health: ',
+        this.health,
+      );
+
+      if (this.health <= 0) {
+
+        this.health = 0;
+        this.die();
+
+        return true;
+      }
+
+      return false;
+  }
+
+  increaseKnockbackResistance(amount) {
+    this.knockbackResistance = Math.min(
+      this.knockbackResistance + amount,
+      0.75
+    );
+  }
 
   die() {
     this.scene.isGameOver = true;

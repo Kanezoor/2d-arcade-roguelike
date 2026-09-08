@@ -8,7 +8,10 @@ export default class Projectile {
     speed,
     angle,
     owner,
-    team = 'player'
+    team = 'player',
+    hitReactionDistance = 0,
+    hitPushDuration = 0,
+    hitStunDuration = 0,
   ) {
     this.scene = scene;
     this.owner = owner;
@@ -27,12 +30,18 @@ export default class Projectile {
     this.remainingHits = this.isPiercing ? 2 : 1;
 
     this.team = team;
+    this.hitReactionDistance = hitReactionDistance;
+    this.hitPushDuration = hitPushDuration;
+    this.hitStunDuration = hitStunDuration;
 
     this.sprite.damage = this.damage;
     this.sprite.isMagnetic = this.isMagnetic;
     this.sprite.isPiercing = this.isPiercing;
     this.sprite.owner = owner;
     this.sprite.team = team;
+    this.sprite.hitReactionDistance = this.hitReactionDistance;
+    this.sprite.hitPushDuration = this.hitPushDuration;
+    this.sprite.hitStunDuration = this.hitStunDuration;
 
     this.sprite.body.setVelocity(
       Math.cos(angle) * this.speed,

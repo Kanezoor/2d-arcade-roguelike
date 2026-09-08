@@ -6,6 +6,7 @@ export default class Enemy {
   constructor(sprite, config, scene) {
 
     this.sprite = sprite;
+    this.sprite.body.pushable = false;
     sprite.enemy = this;
     this.scene = scene;
 
@@ -14,8 +15,13 @@ export default class Enemy {
     this.speed = config.speed;
     this.damage = config.damage;
     this.score = config.score;
+    this.xp = config.xp ?? 0;
     this.color = config.color;
     this.knockbackResistance = config.knockbackResistance;
+    this.hitReactionDistance = config.hitReactionDistance ?? 0;
+    this.chargeHitPushDuration = config.chargeHitPushDuration ?? 0;
+    this.chargeHitReactionDistance = config.chargeHitReactionDistance ?? 0;
+    this.chargeHitStunDuration = config.chargeHitStunDuration ?? 0;
     this.kbX = 0;
     this.kbY = 0;
 
@@ -80,7 +86,10 @@ export default class Enemy {
       speed,
       angle,
       this,
-      'enemy'
+      'enemy',
+      3,
+      50,
+      0,
     );
 
   }
@@ -269,12 +278,12 @@ export default class Enemy {
         this.sprite.y
       );
 
-      this.xbX +=
+      this.kbX +=
         Math.cos(angle) *
         context.knockbackStrength *
         this.knockbackResistance;
 
-      this.xbY +=
+      this.kbY +=
         Math.sin(angle) *
         context.knockbackStrength *
         this.knockbackResistance;
@@ -291,6 +300,7 @@ export default class Enemy {
         20
       );
 
+      this.scene.player.gainExperience(this.xp);
       this.sprite.destroy();
 
       this.scene.score += this.score;

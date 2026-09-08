@@ -125,7 +125,9 @@ export default class Boss {
         250,
         angle,
         this,
-        'enemy'
+        'enemy',
+        10,
+        60,
       );
     });
 
@@ -158,7 +160,9 @@ export default class Boss {
       500,
       angle,
       this,
-      'enemy'
+      'enemy',
+      15,
+      80,
     );
   }
 
