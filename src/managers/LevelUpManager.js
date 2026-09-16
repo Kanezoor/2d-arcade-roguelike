@@ -16,7 +16,7 @@ export default class LevelUpManager {
     this.isOpen = true;
 
     this.scene.isLevelUpOpen = true;
-    this.scene.physics.pause();
+    this.scene.matter.world.pause();
 
     this.waitForPointerRelease = this.scene.input.activePointer.isDown;
 
@@ -209,6 +209,6 @@ export default class LevelUpManager {
     this.isOpen = false;
     this.waitForPointerRelease = false;
     this.scene.isLevelUpOpen = false;
-    this.scene.physics.resume();
+    this.scene.matter.world.resume();
   }
 }

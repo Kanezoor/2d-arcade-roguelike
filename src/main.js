@@ -5,9 +5,15 @@ const config = {
   width: 800,
   height: 800,
   physics: {
-    default: 'arcade',
-    arcade: {
-      debug: false,
+    default: 'matter',
+    matter: {
+      gravity: {
+        y: 0
+      },
+      debug: {
+        showBody: true,
+        showStaticBody: true,
+      }
     }
   },
   scene: GameScene

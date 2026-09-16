@@ -15,8 +15,6 @@ export default class Boss {
 
     this.isDead = false;
 
-    this.sprite.setImmovable(true);
-
     this.attackState = 'idle';
     this.attackTimer = 0;
 
@@ -122,11 +120,11 @@ export default class Boss {
         this.sprite.y,
         'bullet',
         1,
-        250,
+        6,
         angle,
         this,
         'enemy',
-        10,
+        5,
         60,
       );
     });
@@ -157,11 +155,11 @@ export default class Boss {
       this.sprite.y,
       'bullet',
       1,
-      500,
+      9,
       angle,
       this,
       'enemy',
-      15,
+      8,
       80,
     );
   }

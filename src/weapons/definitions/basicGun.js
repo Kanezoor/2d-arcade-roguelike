@@ -6,7 +6,7 @@ const basicGun = {
   stats: {
     damage: 10,
     fireRate: 300,
-    projectileSpeed: 600,
+    projectileSpeed: 5,
     range: 1000,
     knockBack: 200,
     magazineSize: Infinity,

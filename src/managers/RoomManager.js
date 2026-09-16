@@ -14,8 +14,8 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xffffff,
         enemies: [
-          {type: 'brute', count: 1},
-          {type: 'blue', count: 5},
+          // {type: 'brute', count: 1},
+          // {type: 'blue', count: 5},
           {type: 'ranged', count: 1},
           {type: 'charger', count: 1}
         ],
@@ -96,15 +96,15 @@ export default class RoomManager {
       0xff0000
     );
 
-    this.scene.physics.add.existing(this.door, true);
-
-    this.scene.physics.add.overlap(
-      this.scene.player.sprite,
+    this.scene.matter.add.gameObject(
       this.door,
-      () => {
-        this.enterDoor();
+      {
+        isStatic: true,
+        isSensor: true,
       }
     );
+
+    this.door.isDoor = true;
 
     for (const enemyGroup of room.enemies) {
       for (let i = 0; i < enemyGroup.count; i++) {
@@ -152,22 +152,23 @@ export default class RoomManager {
 
     this.walls = [top, bottom, left, right];
 
-    this.scene.physics.add.existing(top, true);
-    this.scene.physics.add.existing(bottom, true);
-    this.scene.physics.add.existing(left, true);
-    this.scene.physics.add.existing(right, true);
+    this.scene.matter.add.gameObject(
+      top,
+      { isStatic: true },
+    );
 
-    this.walls.forEach(wall => {
-      this.scene.physics.add.collider(
-        this.scene.player.sprite,
-        wall
-      );
-
-      this.scene.physics.add.collider(
-        this.scene.enemies,
-        wall
-      );
-    });
+    this.scene.matter.add.gameObject(
+      bottom,
+      { isStatic: true },
+    );
+    this.scene.matter.add.gameObject(
+      left,
+      { isStatic: true },
+    );
+    this.scene.matter.add.gameObject(
+      right,
+      { isStatic: true },
+    );
   }
 
   createCircularBoundry() {
@@ -221,19 +222,12 @@ export default class RoomManager {
 
       wall.rotation = tangentAngle;
 
-      this.scene.physics.add.existing(wall, true);
+      this.scene.matter.add.gameObject(
+        wall,
+        { isStatic: true },
+      );
 
       this.walls.push(wall);
-
-      this.scene.physics.add.collider(
-        this.scene.player.sprite,
-        wall,
-      );
-
-      this.scene.physics.add.collider(
-        this.scene.enemies,
-        wall
-      );
     }
   }
 
@@ -289,7 +283,19 @@ export default class RoomManager {
     this.isBossRoom = true;
     this.isTransitioning = false;
 
-    const bossSprite = this.scene.bosses.create(400, 100, 'boss');
+    const bossSprite = this.scene.matter.add.sprite(
+      400,
+      100,
+      'boss',
+      undefined,
+      {
+        isStatic: true,
+        ignoreGravity: true,
+      }
+    );
+
+    bossSprite.setFixedRotation();
+    this.scene.bosses.add(bossSprite);
 
     this.boss = new Boss(bossSprite, this.scene);
 
@@ -325,7 +331,13 @@ export default class RoomManager {
       400, 400, 40, 40, 0xffff00
     );
 
-    this.scene.physics.add.existing(sprite, true);
+    this.scene.matter.add.gameObject(
+      sprite,
+      {
+        isStatic: true,
+        isSensor: true,
+      }
+    );
 
     this.scene.rewards.add(sprite);
 

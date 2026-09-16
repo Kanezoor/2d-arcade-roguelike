@@ -1,12 +1,12 @@
 import Projectile from "./Projectile.js";
 import { createParticles } from "../particles.js";
 
+
 export default class Enemy {
 
   constructor(sprite, config, scene) {
 
     this.sprite = sprite;
-    this.sprite.body.pushable = false;
     sprite.enemy = this;
     this.scene = scene;
 
@@ -24,6 +24,7 @@ export default class Enemy {
     this.chargeHitStunDuration = config.chargeHitStunDuration ?? 0;
     this.kbX = 0;
     this.kbY = 0;
+    this.maxKnockbackSpeed = 6;
 
     this.preferredDistance = config.preferredDistance ?? 250;
     this.state = config.state ?? 'chase';
@@ -42,7 +43,7 @@ export default class Enemy {
     this.chargeTriggerDistance = config.chargeTriggerDistance ?? 300;
     this.chargeTelegraphTime = config.chargeTelegraphTime ?? 600;
     this.chargeCooldown = config.chargeCooldown ?? 1800;
-    this.chargeSpeed = config.chargeSpeed ?? 600;
+    this.chargeSpeed = config.chargeSpeed ?? 6;
     this.chargeDuration = config.chargeDuration ?? 500;
     this.chargeRecovery = config.chargeRecovery ?? 600;
     this.chargeAngle = 0;
@@ -62,7 +63,7 @@ export default class Enemy {
     this.burstShotsRemaining = this.burstShots;
     this.burstTimer = 0;
 
-    this.sprite.body.setVelocity(0, 0);
+    this.sprite.setVelocity(0, 0);
   }
 
   fireBurstShot() {
@@ -75,7 +76,7 @@ export default class Enemy {
       player.y
     );
 
-    const speed = 666;
+    const speed = 6;
 
     new Projectile(
       this.scene,
@@ -127,13 +128,13 @@ export default class Enemy {
 
     const direction = this.sprite.x < player.x ? 1 : -1;
 
-    this.sprite.body.setVelocity(
+    this.sprite.setVelocity(
       Math.cos(angle + Math.PI / 2) * this.speed * direction,
       Math.sin(angle + Math.PI / 2) * this.speed * direction,
     );
 
     if (this.stateTimer <= 0) {
-      this.sprite.body.setVelocity(0, 0);
+      this.sprite.setVelocity(0, 0);
       this.state = 'kite';
     }
   }
@@ -148,7 +149,7 @@ export default class Enemy {
 
     this.state = 'telegraph';
     this.chargeTimer = this.chargeTelegraphTime;
-    this.sprite.body.setVelocity(0, 0)
+    this.sprite.setVelocity(0, 0)
   }
 
   updateCharger() {
@@ -179,7 +180,7 @@ export default class Enemy {
         return;
       }
 
-      this.sprite.body.setVelocity(
+      this.sprite.setVelocity(
         Math.cos(angle) * this.speed,
         Math.sin(angle) * this.speed
       );
@@ -189,7 +190,7 @@ export default class Enemy {
 
     if (this.state === 'telegraph') {
 
-      this.sprite.body.setVelocity(0, 0);
+      this.sprite.setVelocity(0, 0);
 
       this.chargeTimer -= delta;
 
@@ -206,7 +207,7 @@ export default class Enemy {
 
       if (this.chargeTimer <= 0) {
 
-        this.sprite.body.setVelocity(0, 0);
+        this.sprite.setVelocity(0, 0);
 
         this.state = 'chargeRecovery';
         this.chargeTimer = this.chargeRecovery;
@@ -220,7 +221,7 @@ export default class Enemy {
 
     if (this.state === 'chargeRecovery') {
 
-      this.sprite.body.setVelocity(0, 0);
+      this.sprite.setVelocity(0, 0);
 
       this.chargeTimer -= delta;
 
@@ -252,7 +253,7 @@ export default class Enemy {
     this.chargeTimer = this.chargeDuration;
     this.hasHitPlayerThisCharge = false;
 
-    this.sprite.body.setVelocity(
+    this.sprite.setVelocity(
       Math.cos(this.chargeAngle) * this.chargeSpeed,
       Math.sin(this.chargeAngle) * this.chargeSpeed
     );
@@ -278,15 +279,24 @@ export default class Enemy {
         this.sprite.y
       );
 
-      this.kbX +=
+      this.kbX += 
         Math.cos(angle) *
         context.knockbackStrength *
         this.knockbackResistance;
 
-      this.kbY +=
+      this.kbY += 
         Math.sin(angle) *
         context.knockbackStrength *
         this.knockbackResistance;
+
+      const knockbackSpeed = Math.hypot(this.kbX, this.kbY);
+
+      if (this.maxKnockbackSpeed > this.maxKnockbackSpeed) {
+        const scale = this.maxKnockbackSpeed / knockbackSpeed;
+
+        this.kbX *= scale;
+        this.kbY *= scale;
+      }
     }
 
     if (this.health <= 0) {

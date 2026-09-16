@@ -14,7 +14,7 @@ export default class Shotgun {
     this.nextFire = 0;
     this.fireRate = 1500;
     this.damage = 1;
-    this.projectileSpeed = 900;
+    this.projectileSpeed = 7;
   }
 
   canShoot() {

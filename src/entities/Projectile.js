@@ -1,3 +1,4 @@
+
 export default class Projectile {
   constructor(
     scene,
@@ -16,11 +17,20 @@ export default class Projectile {
     this.scene = scene;
     this.owner = owner;
 
-    this.sprite = scene.projectiles.create(
+    this.sprite = scene.matter.add.sprite(
       x,
       y,
-      texture
+      texture,
+      undefined,
+      {
+        isSensor: true,
+        ignoreGravity: true,
+        frictionAir: 0,
+      }
     );
+
+    this.sprite.setFixedRotation();
+    scene.projectiles.add(this.sprite);
 
     this.damage = damage;
     this.speed = speed;
@@ -43,7 +53,7 @@ export default class Projectile {
     this.sprite.hitPushDuration = this.hitPushDuration;
     this.sprite.hitStunDuration = this.hitStunDuration;
 
-    this.sprite.body.setVelocity(
+    this.sprite.setVelocity(
       Math.cos(angle) * this.speed,
       Math.sin(angle) * this.speed
     );
@@ -79,9 +89,16 @@ export default class Projectile {
       ...this.scene.bosses.getChildren()
     ];
 
+    const velocity = this.sprite.body.velocity;
+
     const currentAngle = Math.atan2(
-      this.sprite.body.velocity.y,
-      this.sprite.body.velocity.x
+      velocity.y,
+      velocity.x,
+    );
+
+    const speed = Math.hypot(
+      velocity.x,
+      velocity.y,
     );
 
     for (const target of targets) {
@@ -133,10 +150,8 @@ export default class Projectile {
       targetAngle,
       0.015
     );
-
-    const speed = this.sprite.body.velocity.length();
-
-    this.sprite.body.setVelocity(
+ 
+    this.sprite.setVelocity(
       Math.cos(newAngle) * speed,
       Math.sin(newAngle) * speed,
     );

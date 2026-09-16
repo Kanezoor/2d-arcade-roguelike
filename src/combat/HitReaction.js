@@ -1,3 +1,5 @@
+
+
 export default class HitReaction {
   constructor(entity) {
     this.entity = entity;
@@ -21,19 +23,19 @@ export default class HitReaction {
     if (this.pushRemaining > 0) {
       this.phase = 'push';
       
-      const speed = distance / (this.pushRemaining / 1000);
+      const speed = distance;
 
       this.pushVelocityX = Math.cos(angle) * speed;
       this.pushVelocityY = Math.sin(angle) * speed;
 
-      this.entity.sprite.body.setVelocity(
+      this.entity.sprite.setVelocity(
         this.pushVelocityX,
         this.pushVelocityY,
       );
     } else {
       this.phase = 'stun';
 
-      this.entity.sprite.body.setVelocity(
+      this.entity.sprite.setVelocity(
         0,
         0,
       );
@@ -49,7 +51,7 @@ export default class HitReaction {
       this.pushRemaining -= delta;
 
       if (this.pushRemaining <= 0) {
-        this.entity.sprite.body.setVelocity(
+        this.entity.sprite.setVelocity(
           0,
           0,
         );
@@ -87,6 +89,6 @@ export default class HitReaction {
     this.pushRemaining = 0;
     this.stunRemaining = 0;
 
-    this.entity.sprite.body.setVelocity(0, 0);
+    this.entity.sprite.setVelocity(0, 0);
   }
 }

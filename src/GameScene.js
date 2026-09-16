@@ -30,9 +30,9 @@ export class GameScene extends Phaser.Scene {
 
     createEnemies(this);
 
-    this.bosses = this.physics.add.group();
+    this.bosses = this.add.group();
     this.roomManager = new RoomManager(this);
-    this.projectiles = this.physics.add.group();
+    this.projectiles = this.add.group();
     this.particles = this.add.group();
     this.rewards = this.add.group();
 
@@ -40,189 +40,345 @@ export class GameScene extends Phaser.Scene {
 
     this.isGameOver = false;
 
-    this.physics.add.collider(
-      this.player.sprite,
-      this.enemies,
-      (playerSprite, enemySprite) => {
-
-        const enemy = enemySprite.enemy;
-
-        if (!enemy) {
-          return;
-        }
-
-        const isCharging = 
-          enemy.behavior === 'charger' &&
-          enemy.state === 'charge';
-
-        if (isCharging && enemy.hasHitPlayerThisCharge) {
-          return;
-        }
-
-        const hitReactionDistance = isCharging 
-          ? enemy.chargeHitReactionDistance
-          : enemy.hitReactionDistance;
-        
-        const hitPushDuration = isCharging
-          ? enemy.chargeHitPushDuration
-          : enemy.hitPushDuration;
-
-        const hitStunDuration = isCharging
-          ? enemy.chargeHitStunDuration
-          : enemy.hitStunDuration;
-        
-        const context = new DamageContext({
-          source: enemySprite,
-          target: this.player,
-          baseDamage: enemy.damage,
-          type: DamageType.PHYSICAL,
-          hitX: enemySprite.x,
-          hitY: enemySprite.y,
-          hitReactionDistance,
-          hitPushDuration,
-          hitStunDuration,
+    this.matter.world.on(
+      'collisionstart',
+      (event) => {
+        event.pairs.forEach(pair => {
+          this.handleMatterCollision(pair);
         });
-
-        const playerDied = 
-          DamageSystem.apply(context);
-
-        if (playerDied) {
-          this.physics.pause();
-          showGameOverScreen(this);
-          return;
-        }
-
-        if (isCharging) {
-          enemy.hasHitPlayerThisCharge = true;
-
-          enemy.sprite.body.setVelocity(0, 0);
-
-          enemy.state = 'chargeRecovery';
-          enemy.chargeTimer = enemy.chargeRecovery;
-
-          enemy.isVulnerable = true;
-          enemy.sprite.setTint(0xffff00);
-        }
       }
     );
 
-    this.physics.add.overlap(
-      this.projectiles,
-      this.enemies,
-      (bullet, enemySprite) => {
-        if(bullet.team !== 'player') {
-          return;
-        }
+  
+    this.matter.world.on(
+      'collisionactive',
+      (event) => {
+        event.pairs.forEach(pair => {
+          const objectA = pair.bodyA.gameObject;
+          const objectB = pair.bodyB.gameObject;
 
-        const projectile = bullet.projectile;
+          if (!objectA || !objectB) {
+            return;
+          }
 
-        if (!projectile) {
-          return;
-        }
+          if (
+            objectA === this.player.sprite &&
+            objectB.enemy
+          ) {
+            this.handleEnemyContact(
+              objectB,
+              false
+            );
+          }
 
-        if (!projectile.registerHit(enemySprite)) {
-          return;
-        }
-
-        hitEnemy(this, bullet, enemySprite);
-
-        if (projectile.remainingHits <= 0) {
-          bullet.destroy();
-        }
-      }
-    );
-
-
-    this.physics.add.overlap(
-      this.projectiles,
-      this.bosses,
-      (bullet, bossSprite) => {
-
-        if (bullet.team !== 'player') {
-          return;
-        }
-
-        if (!bossSprite.active) {
-          return;
-        }
-
-        bullet.destroy();
-
-        const boss = bossSprite.boss;
-        
-        const context = new DamageContext({
-          source: bullet,
-          target: boss,
-          baseDamage: bullet.damage,
-          type: DamageType.PHYSICAL,
-          hitX: bullet.x,
-          hitY: bullet.y,
-          knockbackStrength: 0,
+          if (
+            objectB === this.player.sprite &&
+            objectA.enemy
+          ) {
+            this.handleEnemyContact(
+              objectA,
+              false
+            );
+          }
         });
-
-        DamageSystem.apply(context);
-      }
-    );
-
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.projectiles,
-      (playerSprite, bullet) => {
-        
-        if (bullet.team !== 'enemy') {
-          return;
-        }
-
-        const projectile = bullet.projectile;
-
-        const context = new DamageContext({
-          source: bullet,
-          target: this.player,
-          baseDamage: bullet.damage,
-          type: DamageType.PHYSICAL,
-          hitX: bullet.x,
-          hitY: bullet.y,
-          hitReactionDistance:
-            projectile?.hitReactionDistance ?? 0,
-          hitStunDuration:
-            projectile?.hitStunDuration ?? 0,
-          hitPushDuration:
-            projectile?.hitPushDuration ?? 0,
-        });
-        
-        bullet.destroy();
-
-        const playerDied = 
-          DamageSystem.apply(context);
-      
-        if (playerDied) {
-          this.physics.pause();
-          showGameOverScreen(this);
-        }
-      }
-    );
-
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.rewards,
-      (playerSprite, rewardSprite) => {
-        console.log('Reward collected');
-
-        const reward = rewardSprite.reward;
-        reward.applyTo(this.player);
-        console.log('Piercing Core: ', this.player.hasPassive('piercingCore'));
-        rewardSprite.destroy();
-
-        console.log(
-          'Player health: ',
-          this.player.health,
-          '/',
-          this.player.maxHealth
-        );
       }
     );
 
     this.roomManager.start();
+  }
+
+  handleMatterCollision(pair) {
+
+    const objectA = pair.bodyA.gameObject;
+    const objectB = pair.bodyB.gameObject;
+
+    if (!objectA || !objectB) {
+      return;
+    }
+
+    if (
+      objectA === this.player.sprite &&
+      objectB.enemy
+    ) {
+      this.handleEnemyContact(objectB);
+      return;
+    }
+
+    if (
+      objectB === this.player.sprite &&
+      objectA.enemy
+    ) {
+      this.handleEnemyContact(objectA);
+      return;
+    }
+
+    if (
+      objectA === this.player.sprite &&
+      objectB.projectile
+    ) {
+      this.handlePlayerProjectileContact(objectB);
+      return;
+    }
+
+    if (
+      objectB === this.player.sprite &&
+      objectA.projectile
+    ) {
+      this.handlePlayerProjectileContact(objectA);
+      return;
+    }
+
+    if (
+      objectA === this.player.sprite &&
+      objectB.reward
+    ) {
+      this.handleRewardCollection(objectB);
+      return;
+    }
+
+    if (
+      objectB === this.player.sprite && 
+      objectA.reward
+    ) {
+      this.handleRewardCollection(objectA);
+      return;
+    }
+
+    if (
+      objectA === this.player.sprite &&
+      objectB.isDoor
+    ) {
+      this.roomManager.enterDoor();
+      return;
+    }
+
+    if (
+      objectB === this.player.sprite &&
+      objectA.isDoor
+    ) {
+      this.roomManager.enterDoor();
+      return;
+    }
+
+    if (objectA.projectile && objectB.enemy) {
+      this.handleProjectileEnemyHit(objectA, objectB);
+      return;
+    }
+
+    if (objectB.projectile && objectA.enemy) {
+      this.handleProjectileEnemyHit(objectB, objectA);
+      return;
+    }
+
+    if (objectA.projectile && objectB.boss) {
+      this.handleProjectileBossHit(objectA, objectB);
+      return;
+    }
+
+    if (objectB.projectile && objectA.boss) {
+      this.handleProjectileBossHit(objectB, objectA);
+    }
+  }
+
+  handleEnemyContact(enemySprite, applyHitReaction = true) {
+
+    const enemy = enemySprite.enemy;
+
+    if (!enemy) {
+      return;
+    }
+
+    const isCharging =
+      enemy.behavior === 'charger' &&
+      enemy.state === 'charge';
+
+    if (
+      isCharging &&
+      enemy.hasHitPlayerThisCharge
+    ) {
+      return;
+    }
+
+    const hitReactionDistance = isCharging
+      ? enemy.chargeHitReactionDistance
+      : enemy.hitReactionDistance;
+
+    const hitPushDuration = isCharging
+      ? enemy.chargeHitPushDuration
+      : enemy.hitPushDuration;
+
+    const hitStunDuration = isCharging
+      ? enemy.chargeHitStunDuration
+      : enemy.hitStunDuration;
+
+    const context = new DamageContext({
+      source: enemySprite,
+      target: this.player,
+      baseDamage: enemy.damage,
+      type: DamageType.PHYSICAL,
+      hitX: enemySprite.x,
+      hitY: enemySprite.y,
+      hitReactionDistance:
+        applyHitReaction
+          ? hitReactionDistance
+          : 0,
+      hitPushDuration:
+        applyHitReaction
+          ? hitPushDuration
+          : 0,
+      hitStunDuration:
+        applyHitReaction
+          ? hitStunDuration
+          : 0,
+    });
+
+    const playerDied =
+      DamageSystem.apply(context);
+
+    if (playerDied) {
+      this.matter.world.pause();
+      showGameOverScreen(this);
+      return;
+    }
+
+    if (
+      applyHitReaction &&
+      isCharging
+    ) {
+
+      enemy.hasHitPlayerThisCharge = true;
+
+      enemy.sprite.setVelocity(0, 0);
+
+      enemy.state = 'chargeRecovery';
+      enemy.chargeTimer = enemy.chargeRecovery;
+
+      enemy.isVulnerable = true;
+      enemy.sprite.setTint(0xffff00);
+    }
+  }
+
+  handleProjectileEnemyHit(bullet, enemySprite) {
+
+    if (bullet.team !== 'player') {
+      return;
+    }
+
+    const projectile = bullet.projectile;
+
+    if (!projectile) {
+      return;
+    }
+
+    if (!projectile.registerHit(enemySprite)) {
+      return;
+    }
+
+    hitEnemy(this, bullet, enemySprite);
+
+    if (projectile.remainingHits <= 0) {
+      bullet.destroy();
+    }
+  }
+
+  handleProjectileBossHit(bullet, bossSprite) {
+
+    if (bullet.team !== 'player') {
+      return;
+    }
+
+    if (!bossSprite.active) {
+      return;
+    }
+
+    const boss = bossSprite.boss;
+
+    if (!boss || boss.isDead) {
+      return;
+    }
+
+    const hitX = bullet.x;
+    const hitY = bullet.y;
+    const damage = bullet.damage;
+
+    const context = new DamageContext({
+      source: bullet,
+      target: boss,
+      baseDamage: damage,
+      type: DamageType.PHYSICAL,
+      hitX,
+      hitY,
+      knockbackStrength: 0,
+    });
+
+    DamageSystem.apply(context);
+
+    this.time.delayedCall(0, () => {
+      if (bullet.active) {
+        bullet.destroy();
+      }
+    });
+  }
+  
+  handlePlayerProjectileContact(bullet) {
+
+  if (bullet.team !== 'enemy') {
+    return;
+  }
+
+  const projectile = bullet.projectile;
+
+    const context = new DamageContext({
+      source: bullet,
+      target: this.player,
+      baseDamage: bullet.damage,
+      type: DamageType.PHYSICAL,
+      hitX: bullet.x,
+      hitY: bullet.y,
+      hitReactionDistance:
+        projectile?.hitReactionDistance ?? 0,
+      hitPushDuration:
+        projectile?.hitPushDuration ?? 0,
+      hitStunDuration:
+        projectile?.hitStunDuration ?? 0,
+    });
+
+    bullet.destroy();
+
+    const playerDied =
+      DamageSystem.apply(context);
+
+    if (playerDied) {
+      this.matter.world.pause();
+      showGameOverScreen(this);
+    }
+  }
+
+  handleRewardCollection(rewardSprite) {
+
+    console.log('Reward collected');
+
+    const reward = rewardSprite.reward;
+
+    if (!reward) {
+      return;
+    }
+
+    reward.applyTo(this.player);
+
+    console.log(
+      'Piercing Core:',
+      this.player.hasPassive('piercingCore')
+    );
+
+    rewardSprite.destroy();
+
+    console.log(
+      'Player health:',
+      this.player.health,
+      '/',
+      this.player.maxHealth
+    );
   }
 
   update() {

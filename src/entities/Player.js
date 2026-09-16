@@ -1,17 +1,27 @@
 import WeaponFactory from "../weapons/WeaponFactory.js";
 import HitReaction from "../combat/HitReaction.js";
 
+
 export default class Player {
   constructor(scene) {
     this.scene = scene;
 
-    this.sprite = scene.physics.add.sprite(400, 300, 'playerSquare');
+    this.sprite = scene.matter.add.sprite(
+      400,
+      300,
+      'playerSquare',
+      undefined,
+      {
+        ignoreGravity: true,
+        frictionAir: 0
+      }
+    );
 
-    this.sprite.setCollideWorldBounds(false);
+    this.sprite.setFixedRotation();
 
     this.maxHealth = 100;
     this.health = this.maxHealth;
-    this.speed = 300;
+    this.speed = 5;
     this.knockbackResistance = 0;
     this.hitReaction = new HitReaction(this);
     this.fireRate = 300;
@@ -96,7 +106,10 @@ export default class Player {
     else if (this.cursors.down.isDown)
       velocityY += this.speed;
 
-    this.sprite.body.setVelocity(velocityX, velocityY);
+    this.sprite.setVelocity(
+      velocityX,
+      velocityY
+    );
   }
 
   shoot() {

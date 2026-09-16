@@ -3,9 +3,10 @@ import DamageSystem from "../combat/DamageSystem.js";
 import DamageContext from "../combat/DamageContext.js";
 import DamageType from "../combat/DamageType.js";
 
+
 export function createEnemies(scene) {
 
-  scene.enemies = scene.physics.add.group();
+  scene.enemies = scene.add.group();
 }
 
 export function spawnEnemy(scene, enemyType = null) {
@@ -20,11 +21,9 @@ export function spawnEnemy(scene, enemyType = null) {
   do {
     rx = Phaser.Math.Between(50, room.width - 50);
     ry = Phaser.Math.Between(50, room.height - 50);
-    dist = Phaser.Math.Distance.Between(scene.player.x, scene.player.y, rx, ry);
+    dist = Phaser.Math.Distance.Between(scene.player.sprite.x, scene.player.sprite.y, rx, ry);
   } while (dist < safeRadius);
 
-  // const isBrute = Math.random() < 0.3;
-  // const key = isBrute ? 'purpleBrute' : 'blueEnemy';
   const isBrute = enemyType === 'brute';
   const isRanged = enemyType === 'ranged';
   const isCharger = enemyType === 'charger';
@@ -41,13 +40,27 @@ export function spawnEnemy(scene, enemyType = null) {
     key = 'blueEnemy'
   }
 
-  const sprite = scene.enemies.create(rx, ry, key);
+  const sprite = scene.matter.add.sprite(
+    rx, 
+    ry, 
+    key,
+    undefined,
+    {
+      ignoreGravity: true,
+      frictionAir: 0,
+      density: 0.01,
+    }
+  );
+
+  sprite.setFixedRotation();
+  scene.enemies.add(sprite);
+
   let config;
 
   if(isRanged) {
     config = {
       health: 2,
-      speed: 200,
+      speed: 4,
       damage: 8,
       score: 25,
       color: 0xffa500,
@@ -66,7 +79,7 @@ export function spawnEnemy(scene, enemyType = null) {
   } else if (isCharger) {
     config = {
       health: 15,
-      speed: 110,
+      speed: 2.5,
       damage: 10,
       score: 30,
       color: 0xff8800,
@@ -74,7 +87,7 @@ export function spawnEnemy(scene, enemyType = null) {
       chargeTriggerDistance: 300,
       chargeTelegraphTime: 600,
       chargeCooldown: 1800,
-      chargeSpeed: 600,
+      chargeSpeed: 7,
       chargeDuration: 500,
       chargeRecovery: 600,
       chargeKnockback: 3000,
@@ -82,7 +95,7 @@ export function spawnEnemy(scene, enemyType = null) {
       hitReactionDistance: 25,
       hitPushDuration: 80,
       hitStunDuration: 120,
-      chargeHitReactionDistance: 110,
+      chargeHitReactionDistance: 30,
       chargeHitPushDuration: 120,
       chargeHitStunDuration: 300,
     }
@@ -90,7 +103,7 @@ export function spawnEnemy(scene, enemyType = null) {
   else if (isBrute) {
     config = {
       health:6,
-      speed:80,
+      speed:1.5,
       damage:20,
       score:30,
       color:0x800080,
@@ -102,7 +115,7 @@ export function spawnEnemy(scene, enemyType = null) {
   } else {
     config = {
       health:3,
-      speed:200,
+      speed:4,
       damage:10,
       score:10,
       color:0x0000ff,
@@ -152,17 +165,17 @@ export function updateEnemies(scene) {
       );
 
       if (distance > enemy.preferredDistance + 30) {
-        sprite.body.setVelocity(
+        sprite.setVelocity(
           Math.cos(angle) * enemy.speed,
           Math.sin(angle) * enemy.speed,
         );
       } else if (distance < enemy.preferredDistance - 30) {
-        sprite.body.setVelocity(
+        sprite.setVelocity(
           -Math.cos(angle) * enemy.speed,
           -Math.sin(angle) * enemy.speed,
         );
       } else {
-        sprite.body.setVelocity(0, 0);
+        sprite.setVelocity(0, 0);
 
         if (
           scene.time.now - enemy.lastBurst >= enemy.burstCooldown
@@ -181,7 +194,7 @@ export function updateEnemies(scene) {
       scene.player.sprite.y
     );
 
-    sprite.body.setVelocity(
+    sprite.setVelocity(
       Math.cos(angle) * enemy.speed +
       enemy.kbX,
       Math.sin(angle) * enemy.speed +
@@ -205,7 +218,7 @@ export function hitEnemy(scene, bullet, sprite) {
     type: DamageType.PHYSICAL,
     hitX: bullet.x,
     hitY: bullet.y,
-    knockBackStrength: 250,
+    knockBackStrength: 2.5,
   });
 
   DamageSystem.apply(context);
