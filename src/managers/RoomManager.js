@@ -14,10 +14,10 @@ export default class RoomManager {
         shape: 'rectangle',
         background: 0xffffff,
         enemies: [
-          // {type: 'brute', count: 1},
-          // {type: 'blue', count: 5},
-          {type: 'ranged', count: 1},
-          {type: 'charger', count: 1}
+          {type: 'brute', count: 3},
+          {type: 'blue', count: 5},
+          {type: 'ranged', count: 3},
+          {type: 'charger', count: 3}
         ],
       },
       {

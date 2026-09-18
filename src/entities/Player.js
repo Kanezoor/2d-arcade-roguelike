@@ -33,6 +33,7 @@ export default class Player {
     this.experience = 0;
     this.experienceToNextLevel = 100;
     this.pendingLevelUps = 0;
+    this.levelUpStacks = {};
 
     this.basicWeapon = WeaponFactory.create('basic_gun', this);
     this.shotgun = WeaponFactory.create('shotgun', this);
@@ -243,5 +244,14 @@ export default class Player {
   die() {
     this.scene.isGameOver = true;
     this.sprite.setTint(0xff0000);
+  }
+
+  getLevelUpStacks(familyId) {
+    return this.levelUpStacks[familyId] ?? 0;
+  }
+
+  addLevelUpStack(familyId) {
+    this.levelUpStacks[familyId] = 
+      this.getLevelUpStacks(familyId) + 1;
   }
 }

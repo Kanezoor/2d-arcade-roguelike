@@ -1,3 +1,4 @@
+import { getLevelUpChoices } from "../progression/LevelUpUpgrades.js";
 export default class LevelUpManager {
   constructor(scene) {
     this.scene = scene;
@@ -99,9 +100,22 @@ export default class LevelUpManager {
 
       this.objects.push(card);
 
+      const choiceTier = scene.add.text(
+        x, 215,
+        choice.tierLabel,
+        {
+          fontFamily: 'sans-serif',
+          fontSize: '14px',
+          fill: '#cccccc',
+        }
+      ).setOrigin(0.5);
+
+      choiceTier.setDepth(1003);
+      this.objects.push(choiceTier);
+
       const choiceTitle = scene.add.text(
         x,
-        255,
+        250,
         choice.title,
         {
           fontFamily: 'sans-serif',
@@ -117,7 +131,7 @@ export default class LevelUpManager {
 
       const choiceDescription = scene.add.text(
         x,
-        345,
+        355,
         choice.description,
         {
           fontFamily: 'sans-serif',
@@ -150,42 +164,15 @@ export default class LevelUpManager {
   }
 
   buildChoices() {
-    return [
-      {
-        id: 'maxHealth',
-        title: 'Max Health',
-        description: '+15 maximum health.',
-        apply: player => {
-          player.maxHealth += 15;
-        }
-      },
-      {
-        id: 'heal',
-        title: 'Heal',
-        description: 'Restore 25 health',
-        apply: player => {
-          player.health = Math.min(
-            player.health + 25,
-            player.maxHealth
-          );
-        }
-      },
-      {
-        id: 'knockbackResistance',
-        title: 'Steadfast',
-        description: 'Reduce incoming knockback by 10%.',
-        apply: player => {
-          player.increaseKnockbackResistance(0.1);
-        }
-      }
-    ];
+    return getLevelUpChoices(this.scene.player, 3);
   }
 
   selectChoice(choice) {
     
     console.log(
       'Level-up choice: ',
-      choice.title
+      choice.title,
+      choice.tierLabel,
     );
 
     choice.apply(this.scene.player);
