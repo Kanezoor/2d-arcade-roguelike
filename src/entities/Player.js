@@ -32,6 +32,7 @@ export default class Player {
     this.level = 0;
     this.experience = 0;
     this.experienceToNextLevel = 100;
+    this.pendingLevelUps = 0;
 
     this.basicWeapon = WeaponFactory.create('basic_gun', this);
     this.shotgun = WeaponFactory.create('shotgun', this);
@@ -121,19 +122,24 @@ export default class Player {
   }
 
   gainExperience(amount) {
+    if (amount <= 0) {
+      return;
+    }
+
     this.experience += amount;
 
     console.log(
       'XP gained',
       amount,
-      'Total XP:',
+      'Total XP',
       this.experience,
     );
 
-    if (this.experience >= this.experienceToNextLevel) {
+    while (this.experience >= this.experienceToNextLevel) {
       this.experience -= this.experienceToNextLevel;
 
       this.level++;
+      this.pendingLevelUps++;
 
       this.experienceToNextLevel = 100 + this.level * 50;
 
@@ -141,12 +147,29 @@ export default class Player {
         'LEVEL UP',
         'Level: ',
         this.level,
+        'Pending level-ups',
+        this.pendingLevelUps,
         'Next level: ',
         this.experienceToNextLevel,
       );
+    }
 
+    this.showNextLevelUp();
+  }
+
+  showNextLevelUp() {
+    if (this.pendingLevelUps > 0 && !this.scene.levelUpManager.isOpen) {
       this.scene.levelUpManager.show();
     }
+  }
+
+  completeLevelUp() {
+    if (this.pendingLevelUps <= 0) {
+      return;
+    }
+
+    this.pendingLevelUps--;
+    this.showNextLevelUp();
   }
 
   takeDamage(context) {

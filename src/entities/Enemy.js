@@ -291,7 +291,7 @@ export default class Enemy {
 
       const knockbackSpeed = Math.hypot(this.kbX, this.kbY);
 
-      if (this.maxKnockbackSpeed > this.maxKnockbackSpeed) {
+      if (knockbackSpeed > this.maxKnockbackSpeed) {
         const scale = this.maxKnockbackSpeed / knockbackSpeed;
 
         this.kbX *= scale;

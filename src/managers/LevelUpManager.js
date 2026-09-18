@@ -191,6 +191,10 @@ export default class LevelUpManager {
     choice.apply(this.scene.player);
 
     this.close();
+
+    this.scene.time.delayedCall(0, () => {
+      this.scene.player.completeLevelUp();
+    });
   }
 
   close() {
