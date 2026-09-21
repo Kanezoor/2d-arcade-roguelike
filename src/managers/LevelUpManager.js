@@ -35,9 +35,12 @@ export default class LevelUpManager {
   createUI() {
     const scene = this.scene;
 
+    const centerX = scene.scale.width / 2;
+    const centerY = scene.scale.height / 2;
+
     const background = scene.add.rectangle(
-      400,
-      300,
+      centerX,
+      centerY,
       700,
       500,
       0x111111,
@@ -49,8 +52,8 @@ export default class LevelUpManager {
     this.objects.push(background);
 
     const title = scene.add.text(
-      400,
-      100,
+      centerX,
+      centerY - 200,
       `LEVEL ${scene.player.level}`,
       {
         fontFamily: 'sans-serif',
@@ -64,8 +67,8 @@ export default class LevelUpManager {
     this.objects.push(title);
 
     const subtitle = scene.add.text(
-      400,
-      155,
+      centerX,
+      centerY - 145,
       'Choose an upgrade',
       {
         fontFamily: 'sans-serif',
@@ -79,19 +82,21 @@ export default class LevelUpManager {
 
     this.choices = this.buildChoices();
 
-    const startX = 295;
-    const gap = 210;
-
+    const cardLayout = this.getCardLayout(this.choices.length);
+    
     this.choices.forEach((choice, index) => {
-      const x = startX + gap * index;
+      const layout = cardLayout[index];
+
+      const x = layout.x;
+      const y = layout.y;
 
       const card = scene.add.rectangle(
         x,
-        320,
-        180,
-        220,
+        y,
+        layout.width,
+        layout.height,
         0x444444,
-        1
+        1,
       );
 
       card.setDepth(1002);
@@ -101,7 +106,8 @@ export default class LevelUpManager {
       this.objects.push(card);
 
       const choiceTier = scene.add.text(
-        x, 215,
+        x, 
+        y - layout.height * 0.40,
         choice.tierLabel,
         {
           fontFamily: 'sans-serif',
@@ -115,14 +121,14 @@ export default class LevelUpManager {
 
       const choiceTitle = scene.add.text(
         x,
-        250,
+        y - layout.height * 0.22,
         choice.title,
         {
           fontFamily: 'sans-serif',
           fontSize: '20px',
           fill: '#ffffff',
           align: 'center',
-          wordWrap: { width: 150}
+          wordWrap: { width: layout.width - 30}
         }
       ).setOrigin(0.5);
 
@@ -131,14 +137,14 @@ export default class LevelUpManager {
 
       const choiceDescription = scene.add.text(
         x,
-        355,
+        y + layout.height * 0.12,
         choice.description,
         {
           fontFamily: 'sans-serif',
           fontSize: '16px',
           fill: '#ffffff',
           align: 'center',
-          wordWrap: { width: 150 }
+          wordWrap: { width: layout.width - 30 }
         }
       ).setOrigin(0.5);
 
@@ -164,7 +170,7 @@ export default class LevelUpManager {
   }
 
   buildChoices() {
-    return getLevelUpChoices(this.scene.player, 3);
+    return getLevelUpChoices(this.scene.player, 5);
   }
 
   selectChoice(choice) {
@@ -202,4 +208,78 @@ export default class LevelUpManager {
     this.scene.isLevelUpOpen = false;
     this.scene.matter.world.resume();
   }
+
+  getCardLayout(count) {
+    const panelWidth = 700;
+
+    const panelCenterX = this.scene.scale.width / 2;
+    const panelCenterY = this.scene.scale.height / 2;
+
+    const horizontalPadding = 40;
+
+    const preferredCardWidth = 180;
+    const minCardWidth = 120;
+
+    const preferredGap = 20;
+    const rowGap = 20;
+    
+    let columns;
+
+    if (count <= 4) 
+      columns = count;
+    else if (count <= 6) 
+      columns = 3;
+    else 
+      columns = 4;
+
+    const rows = Math.ceil(count / columns);
+
+    const availableWidth = panelWidth - horizontalPadding * 2;
+
+    let gap = preferredGap;
+
+    let cardWidth = (availableWidth - gap * (columns - 1)) / columns;
+
+    cardWidth = Math.min(cardWidth, preferredCardWidth);
+
+    if (cardWidth < minCardWidth) {
+      gap = 12;
+
+      cardWidth = (availableWidth - gap * (columns - 1)) / columns;
+    }
+
+    const cardHeight = rows === 1 ? 220 : 180;
+
+    const gridCenterY = panelCenterY - 60 + (rows - 1) * 90;
+
+    const totalGridHeight = rows * cardHeight + (rows - 1) * rowGap;
+
+    const gridTop = gridCenterY - totalGridHeight / 2;
+
+    const positions = [];
+
+    for (let row = 0; row < rows; row++) {
+      const firstIndex = row * columns;
+
+      const itemsInRow = Math.min(columns, count - firstIndex);
+
+      const rowWidth = itemsInRow * cardWidth + (itemsInRow - 1) * gap;
+
+      const rowStartX = panelCenterX - rowWidth / 2 + cardWidth / 2;
+
+      const y = gridTop + cardHeight / 2 + row * (cardHeight + rowGap);
+
+      for (let column = 0; column < itemsInRow; column ++) {
+        positions.push({
+          x: rowStartX + column * (cardWidth + gap),
+          y,
+          width: cardWidth,
+          height: cardHeight,
+        });
+      }
+    }
+
+    return positions;
+  }
+
 }

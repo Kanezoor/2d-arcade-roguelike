@@ -274,6 +274,7 @@ const LEVEL_UP_UPGRADES = [
       );
     },
   },
+
 ];
 
 function weightedPick(entries) {
