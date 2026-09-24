@@ -1,9 +1,14 @@
+import UpgradeCard from "./UpgradeCard.js";
+
 import { getLevelUpChoices } from "../progression/LevelUpUpgrades.js";
 export default class LevelUpManager {
   constructor(scene) {
     this.scene = scene;
     this.objects = [];
     this.choices = [];
+    this.cards = [];
+
+    this.isSelecting = false;
 
     this.isOpen = false;
     this.waitForPointerRelease = false;
@@ -83,89 +88,23 @@ export default class LevelUpManager {
     this.choices = this.buildChoices();
 
     const cardLayout = this.getCardLayout(this.choices.length);
+
+    this.cards = [];
     
     this.choices.forEach((choice, index) => {
       const layout = cardLayout[index];
 
-      const x = layout.x;
-      const y = layout.y;
-
-      const card = scene.add.rectangle(
-        x,
-        y,
+      const card = new UpgradeCard(
+        scene,
+        choice,
+        layout.x,
+        layout.y,
         layout.width,
         layout.height,
-        0x444444,
-        1,
+        () => this.selectChoice(choice, card),
       );
 
-      card.setDepth(1002);
-      card.setStrokeStyle(3, 0xffffff);
-      card.setInteractive({ useHandCursor: true });
-
-      this.objects.push(card);
-
-      const choiceTier = scene.add.text(
-        x, 
-        y - layout.height * 0.40,
-        choice.tierLabel,
-        {
-          fontFamily: 'sans-serif',
-          fontSize: '14px',
-          fill: '#cccccc',
-        }
-      ).setOrigin(0.5);
-
-      choiceTier.setDepth(1003);
-      this.objects.push(choiceTier);
-
-      const choiceTitle = scene.add.text(
-        x,
-        y - layout.height * 0.22,
-        choice.title,
-        {
-          fontFamily: 'sans-serif',
-          fontSize: '20px',
-          fill: '#ffffff',
-          align: 'center',
-          wordWrap: { width: layout.width - 30}
-        }
-      ).setOrigin(0.5);
-
-      choiceTitle.setDepth(1003);
-      this.objects.push(choiceTitle);
-
-      const choiceDescription = scene.add.text(
-        x,
-        y + layout.height * 0.12,
-        choice.description,
-        {
-          fontFamily: 'sans-serif',
-          fontSize: '16px',
-          fill: '#ffffff',
-          align: 'center',
-          wordWrap: { width: layout.width - 30 }
-        }
-      ).setOrigin(0.5);
-
-      choiceDescription.setDepth(1003);
-      this.objects.push(choiceDescription);
-
-      card.on('pointerover', () => {
-        card.setFillStyle(0x666666);
-      });
-
-      card.on('pointerout', () => {
-        card.setFillStyle(0x444444);
-      });
-
-      card.on('pointerup', () => {
-        if (this.waitForPointerRelease) {
-          return;
-        }
-
-        this.selectChoice(choice);
-      });
+      this.cards.push(card);
     });
   }
 
@@ -173,21 +112,37 @@ export default class LevelUpManager {
     return getLevelUpChoices(this.scene.player, 5);
   }
 
-  selectChoice(choice) {
-    
+  selectChoice(choice, selectedCard) {
+    if (this.isSelecting) {
+      return;
+    }
+
+    this.isSelecting = true;
+
     console.log(
-      'Level-up choice: ',
+      'Level-up choice',
       choice.title,
       choice.tierLabel,
     );
 
-    choice.apply(this.scene.player);
-
-    this.close();
-
-    this.scene.time.delayedCall(0, () => {
-      this.scene.player.completeLevelUp();
+    this.cards.forEach(card => {
+      if (card === selectedCard) {
+        card.animateSelected();
+      } else {
+        card.animateDeselected();
+      }
     });
+
+    this.scene.time.delayedCall(300, () => {
+      choice.apply(this.scene.player);
+
+      this.close();
+
+      this.scene.time.delayedCall(0, () => {
+        this.scene.player.completeLevelUp();
+      });
+    });
+    
   }
 
   close() {
@@ -195,14 +150,22 @@ export default class LevelUpManager {
       return;
     }
 
+    this.cards.forEach(card => {
+      if (card) {
+        card.destroy();
+      }
+    });
+
+    this.cards = [];
+
     this.objects.forEach(object => {
       if (object) {
         object.destroy();
       }
     });
 
+    this.isSelecting = false;
     this.objects = [];
-    this.choices = [];
     this.isOpen = false;
     this.waitForPointerRelease = false;
     this.scene.isLevelUpOpen = false;

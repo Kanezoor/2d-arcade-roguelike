@@ -120,7 +120,7 @@ export function spawnEnemy(scene, enemyType = null) {
       score:10,
       color:0x0000ff,
       knockbackResistance:0.35,
-      xp: 20,
+      xp: 2000,
       hitReactionDistance: 20,
       hitStunDuration: 120,
     }
