@@ -11,12 +11,14 @@ export default class BasicGun extends Weapon {
   shoot(pointer) {
     if (!this.canShoot()) return;
 
-    const angle = Phaser.Math.Angle.Between(
+    const baseAngle = Phaser.Math.Angle.Between(
       this.owner.sprite.x,
       this.owner.sprite.y,
       pointer.x,
       pointer.y
     );
+
+    const angle = this.getProjectileAngle(baseAngle);
 
     new Projectile(
       this.scene,
@@ -27,7 +29,11 @@ export default class BasicGun extends Weapon {
       this.stats.projectileSpeed,
       angle,
       this.owner,
-      'player'
+      'player',
+      0,
+      0,
+      0,
+      this.stats.penetrationSpeedRetention,
     );
 
     this.nextFire = this.scene.time.now + this.stats.fireRate;

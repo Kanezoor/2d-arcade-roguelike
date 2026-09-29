@@ -1,60 +1,74 @@
+import Weapon from "./Weapon.js";
+import shotgun from "./definitions/shotgun.js";
 import Projectile from "../entities/Projectile.js";
 
-export default class Shotgun {
+export default class Shotgun extends Weapon {
   constructor(owner) {
-    this.owner = owner;
-    this.scene = owner.scene;
-    this.sprite = owner.sprite;
-
-    this.id = 'shotgun';
-    this.name = 'Shotgun';
-    this.description = 'Fires five projectiles in a spread';
-    this.rarity = 'Common';
-
-    this.nextFire = 0;
-    this.fireRate = 1500;
-    this.damage = 1;
-    this.projectileSpeed = 7;
-  }
-
-  canShoot() {
-    return this.scene.time.now >= this.nextFire;
+    super(owner);
+    this.loadDefinition(shotgun);
   }
 
   shoot(pointer) {
-    if (!this.canShoot()) return;
+    if (!this.canShoot()) {
+      return;
+    }
 
     const baseAngle = Phaser.Math.Angle.Between(
       this.owner.sprite.x,
       this.owner.sprite.y,
       pointer.x,
-      pointer.y
+      pointer.y,
     );
 
-    const spread = Phaser.Math.DegToRad(10);
+    const spread = Phaser.Math.DegToRad(
+      this.stats.spreadAngle
+    );
 
-    const angles = [
-      baseAngle - spread,
-      baseAngle - spread / 2,
-      baseAngle,
-      baseAngle + spread / 2,
-      baseAngle + spread
-    ];
+    const halfCount = (this.stats.pelletCount - 1) / 2;
 
-    angles.forEach(angle => {
+    for (let i = 0; i < this.stats.pelletCount; i++) {
+      let normalizedPosition = halfCount === 0
+        ? 0
+        : (i - halfCount) / halfCount;
+
+      const jitter = Phaser.Math.FloatBetween(
+        -this.stats.patternJitter,
+        this.stats.patternJitter
+      );
+
+      normalizedPosition += jitter;
+
+      normalizedPosition = Phaser.Math.Clamp(
+        normalizedPosition,
+        -1,
+        1,
+      );
+
+      const offset = normalizedPosition * spread / 2;
+
+      const angle = this.getProjectileAngle(
+        baseAngle,
+        offset,
+      );
+      
+
       new Projectile(
         this.scene,
         this.owner.sprite.x,
         this.owner.sprite.y,
         'bullet',
-        this.damage,
-        this.projectileSpeed,
+        this.stats.damage,
+        this.stats.projectileSpeed,
         angle,
         this.owner,
-        'player'
+        'player',
+        0,
+        0,
+        0,
+        this.stats.penetrationSpeedRetention,
       );
-    });
+    }
 
-    this.nextFire = this.scene.time.now + this.fireRate;
+    this.nextFire = this.scene.time.now + this.stats.fireRate;
   }
 }

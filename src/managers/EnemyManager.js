@@ -120,7 +120,7 @@ export function spawnEnemy(scene, enemyType = null) {
       score:10,
       color:0x0000ff,
       knockbackResistance:0.35,
-      xp: 2000,
+      xp: 20,
       hitReactionDistance: 20,
       hitStunDuration: 120,
     }
@@ -214,7 +214,9 @@ export function hitEnemy(scene, bullet, sprite) {
   const context = new DamageContext({
     source: bullet,
     target: enemy,
-    baseDamage: bullet.damage,
+    baseDamage: bullet.projectile
+      ? bullet.projectile.getImpactDamage()
+      : bullet.damage,
     type: DamageType.PHYSICAL,
     hitX: bullet.x,
     hitY: bullet.y,

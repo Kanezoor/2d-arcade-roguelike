@@ -1,21 +1,17 @@
 import Weapon from "./Weapon.js";
-import Beam from "../entities/Beam.js";
+import Beam from '../entities/Beam.js'
+import laserGun from "./definitions/laserGun.js";
 
 export default class LaserGun extends Weapon {
   constructor(owner) {
     super(owner);
-
-    this.id = 'laser_gun';
-    this.name = 'Laser Gun';
-    this.description = 'A continuous laser beam.';
-    this.damage = 1;
-    this.range = 500;
+    this.loadDefinition(laserGun);
 
     this.beam = new Beam(
       this.scene,
       this.owner,
-      this.damage,
-      this.range,
+      this.stats.damage,
+      this.stats.range,
     );
   }
 

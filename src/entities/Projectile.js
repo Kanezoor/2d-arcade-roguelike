@@ -13,6 +13,7 @@ export default class Projectile {
     hitReactionDistance = 0,
     hitPushDuration = 0,
     hitStunDuration = 0,
+    penetrationSpeedRetention = 0.85,
   ) {
     this.scene = scene;
     this.owner = owner;
@@ -32,8 +33,10 @@ export default class Projectile {
     this.sprite.setFixedRotation();
     scene.projectiles.add(this.sprite);
 
-    this.damage = damage;
+    this.baseDamage = damage;
     this.speed = speed;
+    this.currentSpeed = speed;
+    this.travelAngle = angle;
     this.isMagnetic = owner.hasPassive?.('magneticCore') === true;
     this.isPiercing = owner.hasPassive?.('piercingCore') === true;
     this.hitTargets = new Set();
@@ -44,7 +47,13 @@ export default class Projectile {
     this.hitPushDuration = hitPushDuration;
     this.hitStunDuration = hitStunDuration;
 
-    this.sprite.damage = this.damage;
+    this.penetrationSpeedRetention = Phaser.Math.Clamp(
+      penetrationSpeedRetention,
+      0,
+      1,
+    );
+
+    this.sprite.damage = this.baseDamage;
     this.sprite.isMagnetic = this.isMagnetic;
     this.sprite.isPiercing = this.isPiercing;
     this.sprite.owner = owner;
@@ -54,8 +63,8 @@ export default class Projectile {
     this.sprite.hitStunDuration = this.hitStunDuration;
 
     this.sprite.setVelocity(
-      Math.cos(angle) * this.speed,
-      Math.sin(angle) * this.speed
+      Math.cos(this.travelAngle) * this.currentSpeed,
+      Math.sin(this.travelAngle) * this.currentSpeed,
     );
 
     this.sprite.projectile = this;
@@ -76,6 +85,37 @@ export default class Projectile {
     return true;
   }
 
+  applyPenetrationSpeedLoss() {
+    if (!this.isPiercing) {
+      return;
+    }
+
+    if (this.remainingHits <= 0) {
+      return;
+    }
+
+    this.currentSpeed *= this.penetrationSpeedRetention;
+
+    this.sprite.setVelocity(
+      Math.cos(this.travelAngle) * this.currentSpeed,
+      Math.sin(this.travelAngle) * this.currentSpeed,
+    );
+  }
+
+  getImpactDamage() {
+    const referenceSpeed = 5;
+
+    const speedRatio = this.currentSpeed / referenceSpeed;
+
+    const speedMultiplier = Phaser.Math.Clamp(
+      Math.sqrt(speedRatio),
+      0.75,
+      1.5,
+    );
+
+    return this.baseDamage * speedMultiplier;
+  }
+
   update() {
     if (!this.isMagnetic || !this.sprite.active) {
       return;
@@ -89,17 +129,7 @@ export default class Projectile {
       ...this.scene.bosses.getChildren()
     ];
 
-    const velocity = this.sprite.body.velocity;
-
-    const currentAngle = Math.atan2(
-      velocity.y,
-      velocity.x,
-    );
-
-    const speed = Math.hypot(
-      velocity.x,
-      velocity.y,
-    );
+    const currentAngle = this.travelAngle;
 
     for (const target of targets) {
       if (!target.active) {
@@ -150,10 +180,12 @@ export default class Projectile {
       targetAngle,
       0.015
     );
+
+    this.travelAngle = newAngle;
  
     this.sprite.setVelocity(
-      Math.cos(newAngle) * speed,
-      Math.sin(newAngle) * speed,
+      Math.cos(this.travelAngle) * this.currentSpeed,
+      Math.sin(this.travelAngle) * this.currentSpeed,
     );
   }
 }

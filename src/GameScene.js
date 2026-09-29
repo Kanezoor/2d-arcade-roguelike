@@ -276,6 +276,8 @@ export class GameScene extends Phaser.Scene {
 
     hitEnemy(this, bullet, enemySprite);
 
+    projectile.applyPenetrationSpeedLoss();
+
     if (projectile.remainingHits <= 0) {
       bullet.destroy();
     }
@@ -299,7 +301,9 @@ export class GameScene extends Phaser.Scene {
 
     const hitX = bullet.x;
     const hitY = bullet.y;
-    const damage = bullet.damage;
+    const damage = bullet.projectile
+      ? bullet.projectile.getImpactDamage()
+      : bullet.damage;
 
     const context = new DamageContext({
       source: bullet,
@@ -331,7 +335,9 @@ export class GameScene extends Phaser.Scene {
     const context = new DamageContext({
       source: bullet,
       target: this.player,
-      baseDamage: bullet.damage,
+      baseDamage: bullet.projectile
+        ? bullet.projectile.getImpactDamage()
+        : bullet.damage,
       type: DamageType.PHYSICAL,
       hitX: bullet.x,
       hitY: bullet.y,
@@ -369,6 +375,11 @@ export class GameScene extends Phaser.Scene {
     console.log(
       'Piercing Core:',
       this.player.hasPassive('piercingCore')
+    );
+    
+    console.log(
+      'Magnetic Core:',
+      this.player.hasPassive('magneticCore')
     );
 
     rewardSprite.destroy();
