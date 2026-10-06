@@ -5,6 +5,7 @@ import HitReaction from "../combat/HitReaction.js";
 export default class Player {
   constructor(scene) {
     this.scene = scene;
+    
 
     this.sprite = scene.matter.add.sprite(
       400,
@@ -34,6 +35,7 @@ export default class Player {
     this.experienceToNextLevel = 100;
     this.pendingLevelUps = 0;
     this.levelUpStacks = {};
+    
 
     this.basicWeapon = WeaponFactory.create('basic_gun', this);
     this.shotgun = WeaponFactory.create('shotgun', this);
@@ -41,6 +43,7 @@ export default class Player {
     this.leftWeapon = this.basicWeapon;
     this.rightWeapon = null;
     this.passiveItems = [];
+    this.fireButtonDown = false;
 
     this.cursors = scene.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -49,7 +52,9 @@ export default class Player {
       right: Phaser.Input.Keyboard.KeyCodes.D
     });
     this.switchKeys = this.scene.input.keyboard.addKeys('ONE,TWO,THREE');
-
+    this.reloadKey = scene.input.keyboard.addKey(
+      Phaser.Input.Keyboard.KeyCodes.R
+    );
   }
 
   hasPassive(passiveId) {
@@ -80,11 +85,35 @@ export default class Player {
     }
 
     this.move();
-    this.shoot();
 
-    if (this.leftWeapon?.update) {
-      this.leftWeapon.update(this.scene.input.activePointer);
+    if (
+      Phaser.Input.Keyboard.JustDown(
+      this.reloadKey
+    )
+    ) {
+      this.leftWeapon?.reload?.();
     }
+    
+    const pointer = this.scene.input.activePointer;
+
+    const triggerStarted = pointer.isDown && !this.fireButtonDown;
+
+    if (pointer.isDown) {
+      this.leftWeapon?.shoot(
+        pointer,
+        triggerStarted
+      );
+
+      this.fireButtonDown = true;
+    } else {
+      if (this.fireButtonDown) {
+          this.leftWeapon?.release?.();
+      }
+
+      this.fireButtonDown = false;
+    }
+
+    this.leftWeapon?.update?.(pointer);
   }
 
   move() {

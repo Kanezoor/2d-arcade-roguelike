@@ -8,6 +8,8 @@ export default class Projectile {
     damage,
     speed,
     angle,
+    range,
+    projectileLifetime,
     owner,
     team = 'player',
     hitReactionDistance = 0,
@@ -37,6 +39,16 @@ export default class Projectile {
     this.speed = speed;
     this.currentSpeed = speed;
     this.travelAngle = angle;
+
+    this.startX = x;
+    this.startY = y;
+    this.age = 0;
+    this.distanceTravelled = 0;
+    this.previousX = x;
+    this.previousY = y;
+    this.maxRange = range;
+    this.maxLifetime = projectileLifetime;
+
     this.isMagnetic = owner.hasPassive?.('magneticCore') === true;
     this.isPiercing = owner.hasPassive?.('piercingCore') === true;
     this.hitTargets = new Set();
@@ -116,10 +128,49 @@ export default class Projectile {
     return this.baseDamage * speedMultiplier;
   }
 
-  update() {
-    if (!this.isMagnetic || !this.sprite.active) {
+  updateLifecycle(delta) {
+    this.age += delta;
+
+    const dx = this.sprite.x - this.previousX;
+    const dy = this.sprite.y - this.previousY;
+
+    this.distanceTravelled += Math.hypot(dx, dy);
+
+    this.previousX = this.sprite.x;
+    this.previousY = this.sprite.y;
+
+    if (
+      this.maxLifetime > 0 &&
+      this.age >= this.maxLifetime
+    ) {
+      this.sprite.destroy();
+      return false;
+    }
+
+    if (
+      this.maxRange > 0 &&
+      this.distanceTravelled >= this.maxRange
+    ) {
+      this.sprite.destroy();
+      return false;
+    }
+
+    return true;
+  }
+
+
+  update(delta) {
+    if (!this.sprite.active) {
       return;
     }
+
+    if (!this.updateLifecycle(delta)) {
+      return;
+    }
+
+    if (!this.isMagnetic) {
+      return;
+    } 
 
     let closestTarget = null;
     let closestDistance = 100;

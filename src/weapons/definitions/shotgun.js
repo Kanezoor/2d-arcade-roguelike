@@ -6,12 +6,12 @@ const shotgun = {
 
   stats: {
     damage: 1,
-    fireRate: 1500,
+    fireRate: 300,
     projectileSpeed: 7,
-    range: 1000,
+    range: 500,
     knockback: 2.5,
     magazineSize: 5,
-    reloadTime: 0,
+    reloadTime: 1000,
     accuracy: 0.85,
     accuracySpread: 10,
     criticalChance: 0,
@@ -24,7 +24,8 @@ const shotgun = {
   },
 
   slots: 2,
-  fireMode: 'spread'
+  fireMode: 'spread',
+  reloadMode: 'shell',
 };
 
 export default shotgun;

@@ -7,7 +7,7 @@ const laserGun = {
   stats: {
     damage: 1,
     fireRate: 0,
-    range: 500,
+    range: 5000,
     accuracy: 1,
     criticalChance: 0,
     criticalDamage: 1,
@@ -15,6 +15,7 @@ const laserGun = {
 
   slots: 2,
   fireMode: 'beam',
+  reloadMode: 'none',
 };
 
 export default laserGun;

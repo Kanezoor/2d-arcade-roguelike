@@ -2,6 +2,83 @@ export function drawUI(scene) {
 
   scene.uiGraphics.clear();
 
+  
+  const weaponPanelWidth = 190;
+  const weaponPanelHeight = 85;
+  const hudRightMargin = 35;
+  const hudBottomMargin = 25;
+
+  const weaponPanelX =
+    scene.scale.width -
+    hudRightMargin -
+    weaponPanelWidth;
+
+  const weaponPanelY =
+    scene.scale.height -
+    hudBottomMargin -
+    weaponPanelHeight;
+  
+  const weaponTextX =
+    scene.scale.width -
+    hudRightMargin;
+
+  scene.weaponNameText.setX(weaponTextX);
+  scene.weaponAmmoText.setX(weaponTextX);
+  scene.weaponReloadText.setX(weaponTextX);
+  
+  scene.uiGraphics.fillStyle(
+    0xffffff,
+    0.75
+  );
+
+  scene.uiGraphics.fillRect(
+    weaponPanelX,
+    weaponPanelY,
+    weaponPanelWidth,
+    weaponPanelHeight
+  );
+
+  scene.uiGraphics.lineStyle(
+    2,
+    0x555555,
+    0.8
+  );
+
+  scene.uiGraphics.strokeRect(
+    weaponPanelX,
+    weaponPanelY,
+    weaponPanelWidth,
+    weaponPanelHeight
+  );
+
+  const weapon = scene.player.leftWeapon;
+
+  if (weapon) {
+    scene.weaponNameText.setText(
+      weapon.name
+    );
+
+    if (
+      weapon.currentAmmo === Infinity
+    ) {
+      scene.weaponAmmoText.setText(
+        'READY'
+      );
+    } else {
+      scene.weaponAmmoText.setText(
+        `${weapon.currentAmmo} / ${weapon.stats.magazineSize}`
+      );
+    }
+
+    if (weapon.isReloading) {
+      scene.weaponReloadText.setText(
+        'RELOADING...'
+      );
+    } else {
+      scene.weaponReloadText.setText('');
+    }
+  }
+
   const barX = 20;
   const barY = 55;
   const barWidth = 200;
@@ -53,6 +130,41 @@ export function createUI(scene) {
 
   scene.uiGraphics = scene.add.graphics();
 
+  scene.weaponNameText = scene.add.text(
+    scene.scale.width - 20,
+    scene.scale.height - 70,
+    '',
+    {
+      fontFamily: 'sans-serif',
+      fontSize: '20px',
+      fill: '#000000',
+      align: 'right'
+    }
+  ).setOrigin(1, 0.5);
+
+  scene.weaponAmmoText = scene.add.text(
+    scene.scale.width - 20,
+    scene.scale.height - 42,
+    '',
+    {
+      fontFamily: 'sans-serif',
+      fontSize: '18px',
+      fill: '#000000',
+      align: 'right'
+    }
+  ).setOrigin(1, 0.5);
+
+  scene.weaponReloadText = scene.add.text(
+    scene.scale.width - 20,
+    scene.scale.height - 18,
+    '',
+    {
+      fontFamily: 'sans-serif',
+      fontSize: '14px',
+      fill: '#555555',
+      align: 'right'
+    }
+  ).setOrigin(1, 0.5);
 }
 
 export function showGameOverScreen(scene) {

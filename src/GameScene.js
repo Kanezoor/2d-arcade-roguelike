@@ -415,7 +415,9 @@ export class GameScene extends Phaser.Scene {
 
     this.projectiles.getChildren().forEach(bullet => {
       if (bullet.projectile) {
-        bullet.projectile.update();
+        bullet.projectile.update(
+          this.game.loop.delta
+        );
       }
     });
 
