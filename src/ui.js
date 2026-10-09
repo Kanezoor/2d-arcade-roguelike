@@ -19,8 +19,9 @@ export function drawUI(scene) {
     weaponPanelHeight;
   
   const weaponTextX =
-    scene.scale.width -
-    hudRightMargin;
+    weaponPanelX +
+    weaponPanelWidth -
+    12;
 
   scene.weaponNameText.setX(weaponTextX);
   scene.weaponAmmoText.setX(weaponTextX);
@@ -130,9 +131,29 @@ export function createUI(scene) {
 
   scene.uiGraphics = scene.add.graphics();
 
+  const weaponPanelWidth = 190;
+  const weaponPanelHeight = 85;
+  const hudRightMargin = 35;
+  const hudBottomMargin = 25;
+
+  const weaponPanelX =
+    scene.scale.width -
+    hudRightMargin -
+    weaponPanelWidth;
+
+  const weaponPanelY =
+    scene.scale.height -
+    hudBottomMargin -
+    weaponPanelHeight;
+
+  const weaponTextX =
+    weaponPanelX +
+    weaponPanelWidth -
+    12;
+
   scene.weaponNameText = scene.add.text(
-    scene.scale.width - 20,
-    scene.scale.height - 70,
+    weaponTextX,
+    weaponPanelY + 22,
     '',
     {
       fontFamily: 'sans-serif',
@@ -143,8 +164,8 @@ export function createUI(scene) {
   ).setOrigin(1, 0.5);
 
   scene.weaponAmmoText = scene.add.text(
-    scene.scale.width - 20,
-    scene.scale.height - 42,
+    weaponTextX,
+    weaponPanelY + 50,
     '',
     {
       fontFamily: 'sans-serif',
@@ -155,8 +176,8 @@ export function createUI(scene) {
   ).setOrigin(1, 0.5);
 
   scene.weaponReloadText = scene.add.text(
-    scene.scale.width - 20,
-    scene.scale.height - 18,
+    weaponTextX,
+    weaponPanelY + 72,
     '',
     {
       fontFamily: 'sans-serif',
