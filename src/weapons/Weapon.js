@@ -1,6 +1,7 @@
 import FireModeFactory from "./firemodes/FireModeFactory.js";
 import Projectile from "../entities/Projectile.js";
 const PROJECTILE_REFERENCE_SPEED = 5;
+const MAX_MODULE_SLOTS = 10;
 
 export default class Weapon {
   constructor(owner) {
@@ -15,12 +16,15 @@ export default class Weapon {
     this.rarity = 'Common';
     this.stats = {};
     this.nextFire = 0;
-    this.modules = [];
     this.moduleSlots = [];
 
     this.currentAmmo = Infinity;
     this.isReloading = false;
     this.reloadEndTime = 0;
+  }
+
+  get modules() {
+    return this.moduleSlots.filter(Boolean);
   }
 
   loadDefinition(definition) {
@@ -33,7 +37,12 @@ export default class Weapon {
     this.isReloading = false;
     this.reloadEndTime = 0;
     this.reloadMode = definition.reloadMode ?? 'magazine';
-    this.moduleSlots = new Array(definition.slots).fill(null);
+    const initialSlotCount = Phaser.Math.Clamp(
+      definition.slots ?? 2,
+      0,
+      MAX_MODULE_SLOTS,
+    );
+    this.moduleSlots = new Array(initialSlotCount).fill(null);
     this.fireModeId = definition.fireMode;
     this.fireMode = FireModeFactory.create(
       this.fireModeId,
@@ -264,20 +273,69 @@ export default class Weapon {
     );
   }
 
-  canAddModule() {
-    return this.modules.length < this.moduleSlots.length;
+  addModuleSlots(count = 1) {
+    if (
+      !Number.isInteger(count) ||
+      count <= 0 ||
+      this.moduleSlots.length + count > MAX_MODULE_SLOTS
+    ) {
+      return false;
+    }
+
+    this.moduleSlots.push(...new Array(count).fill(null));
+
+    return true;
   }
 
-  installModule(module) {
-    if (!module) {
+  canAddModule() {
+    return this.moduleSlots.some(
+      module => module === null
+    );
+  }
+  
+  canAddModuleSlots(count = 1) {
+    return (
+      Number.isInteger(count) &&
+      count > 0 &&
+      this.moduleSlots.length + count <= MAX_MODULE_SLOTS
+    );
+  }
+
+  addModuleSlots(count = 1) {
+    if (!this.canAddModuleSlots(count)) {
       return false;
     }
 
-    if (!this.canAddModule()) {
+    this.moduleSlots.push(
+      ...new Array(count).fill(null)
+    );
+
+    return true;
+  }
+
+  installModule(
+    module,
+    slotIndex = this.moduleSlots.findIndex(
+      existingModule => existingModule === null
+    )
+  ) {
+    if (
+      !module ||
+      !Number.isInteger(slotIndex) ||
+      slotIndex < 0 ||
+      slotIndex >= this.moduleSlots.length ||
+      this.moduleSlots[slotIndex] !== null ||
+      this.modules.includes(module) ||
+      module.weapon !== this
+    ) {
       return false;
     }
 
-    return this.addModule(module);
+    this.moduleSlots[slotIndex] = module;
+
+    module.install();
+
+    return true;
   }
 
   onProjectileCreated(projectile) {
@@ -291,29 +349,67 @@ export default class Weapon {
   }
 
   addModule(module) {
-    if (!module) {
+    return this.installModule(module);
+  }
+
+  moveModule(fromIndex, toIndex) {
+    if (
+      !Number.isInteger(fromIndex) ||
+      !Number.isInteger(toIndex) ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= this.moduleSlots.length ||
+      toIndex >= this.moduleSlots.length ||
+      fromIndex === toIndex
+    ) {
       return false;
     }
 
-    this.modules.push(module);
+    const module = this.moduleSlots[fromIndex];
 
-    module.install();
+    if (
+      !module ||
+      this.moduleSlots[toIndex] !== null
+    ) {
+      return false;
+    }
+
+    this.moduleSlots[fromIndex] = null;
+    this.moduleSlots[toIndex] = module;
 
     return true;
   }
 
-  removeModule(module) {
-    const index = this.modules.indexOf(module);
-
-    if (index === -1) {
-      return false;
+  removeModuleAt(slotIndex) {
+    if (
+      !Number.isInteger(slotIndex) ||
+    slotIndex < 0 ||
+      slotIndex >= this.moduleSlots.length
+    ) {
+      return null;
     }
 
-    this.modules.splice(index, 1);
+    const module = this.moduleSlots[slotIndex];
+
+    if (!module) {
+      return null;
+    }
+
+    this.moduleSlots[slotIndex] = null;
 
     module.uninstall();
 
-    return true;
+    return module;
+  }
+
+  removeModule(module) {
+    const slotIndex = this.moduleSlots.indexOf(module);
+
+    if (slotIndex === -1) {
+      return false;
+    }
+
+    return this.removeModuleAt(slotIndex) !== null;
   }
   
 

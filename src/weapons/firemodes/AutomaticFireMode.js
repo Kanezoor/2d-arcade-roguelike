@@ -1,5 +1,4 @@
 import FireMode from "./FireMode.js";
-import Projectile from "../../entities/Projectile.js";
 
 export default class AutomaticFireMode extends FireMode {
   shoot(pointer) {
@@ -24,21 +23,13 @@ export default class AutomaticFireMode extends FireMode {
       baseAngle,
     );
 
-    new Projectile(
-      this.scene,
-      this.owner.sprite.x,
-      this.owner.sprite.y,
-      'bullet',
-      weapon.stats.damage,
-      weapon.stats.projectileSpeed,
+    weapon.createProjectile({
+      damage: weapon.stats.damage,
+      speed: weapon.stats.projectileSpeed,
       angle,
-      this.owner,
-      'player',
-      0,
-      0,
-      0,
-      weapon.stats.penetrationSpeedRetention,
-    );
+      range: weapon.stats.range,
+      projectileLifetime: weapon.stats.projectileLifetime,
+    });
 
     weapon.nextFire = 
       this.scene.time.now + weapon.stats.fireRate;

@@ -7,7 +7,7 @@ export default class AcceleratedRoundsModule extends WeaponModule {
     this.id = "acceleratedRounds";
     this.name = "Accelerated Rounds";
     this.description = "+20% projectile speed.";
-    this.speedMultiplier = 5;
+    this.speedMultiplier = 1.2;
   }
 
   onProjectileCreated(projectile) {

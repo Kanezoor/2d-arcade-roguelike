@@ -16,7 +16,7 @@ export default class RoomManager {
         enemies: [
           // {type: 'brute', count: 3},
           // {type: 'blue', count: 5},
-          // {type: 'ranged', count: 3},
+          {type: 'ranged', count: 3},
           // {type: 'charger', count: 3}
         ],
       },
@@ -323,6 +323,7 @@ export default class RoomManager {
     }
     this.clearRoomWalls();
     this.clearRewards();
+    this.scene.clearWorldItems();
     this.startNextRoom();
   }
 

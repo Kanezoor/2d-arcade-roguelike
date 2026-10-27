@@ -86,6 +86,8 @@ export default class Enemy {
       this.damage,
       speed,
       angle,
+      1000,
+      5000,
       this,
       'enemy',
       3,

@@ -1,5 +1,6 @@
 import WeaponFactory from "../weapons/WeaponFactory.js";
 import HitReaction from "../combat/HitReaction.js";
+import Inventory from "../inventory/Inventory.js";
 
 
 export default class Player {
@@ -19,6 +20,7 @@ export default class Player {
     );
 
     this.sprite.setFixedRotation();
+    this.inventory = new Inventory(8, 4);
 
     this.maxHealth = 100;
     this.health = this.maxHealth;
@@ -40,10 +42,12 @@ export default class Player {
     this.basicWeapon = WeaponFactory.create('basic_gun', this);
     this.shotgun = WeaponFactory.create('shotgun', this);
     this.laserGun = WeaponFactory.create('laser_gun', this);
-    this.leftWeapon = this.basicWeapon;
-    this.rightWeapon = null;
+    this.weaponSlots = [this.basicWeapon, this.shotgun];
+    this.activeWeaponSlot = 0;
+
     this.passiveItems = [];
     this.fireButtonDown = false;
+    this.blockFireUntilRelease = false;
 
     this.cursors = scene.input.keyboard.addKeys({
       up: Phaser.Input.Keyboard.KeyCodes.W,
@@ -51,10 +55,68 @@ export default class Player {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D
     });
-    this.switchKeys = this.scene.input.keyboard.addKeys('ONE,TWO,THREE');
+    this.switchKeys = this.scene.input.keyboard.addKeys('ONE,TWO');
     this.reloadKey = scene.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.R
     );
+  }
+
+  get activeWeapon() {
+    return this.weaponSlots[this.activeWeaponSlot] ?? null;
+  }
+
+  selectWeaponSlot(slotIndex) {
+    if (
+      !Number.isInteger(slotIndex) ||
+      slotIndex < 0 ||
+      slotIndex >= this.weaponSlots.length
+    ) {
+      return false;
+    }
+
+    if (slotIndex === this.activeWeaponSlot) {
+      return true;
+    }
+
+    this.activeWeapon?.stop?.();
+    this.activeWeaponSlot = slotIndex;
+
+    if (this.scene.input.activePointer.isDown) {
+      this.blockFireUntilRelease = true;
+      this.fireButtonDown = true;
+    }
+
+    return true;
+  }
+
+  setWeaponSlot(slotIndex, weapon) {
+    if (
+      !Number.isInteger(slotIndex) ||
+      slotIndex < 0 ||
+      slotIndex >= this.weaponSlots.length ||
+      (weapon !== null && weapon?.owner !== this)
+    ) {
+      return false;
+    }
+
+    const previousWeapon = this.weaponSlots[slotIndex];
+
+    if (previousWeapon === weapon) {
+      return true;
+    }
+
+    if (slotIndex === this.activeWeaponSlot) {
+      previousWeapon?.stop?.();
+
+      if (this.scene.input.activePointer.isDown) {
+        this.blockFireUntilRelease = true;
+        this.fireButtonDown = true;
+      }
+    }
+
+    this.weaponSlots[slotIndex] = weapon;
+
+    return true;
   }
 
   hasPassive(passiveId) {
@@ -70,50 +132,44 @@ export default class Player {
     if (this.scene.isGameOver) return;
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKeys.ONE)) {
-      this.leftWeapon?.stop?.();
-      this.leftWeapon = this.basicWeapon;
+      this.selectWeaponSlot(0);
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKeys.TWO)) {
-      this.leftWeapon?.stop?.();
-      this.leftWeapon = this.shotgun;
-    }
-
-    if (Phaser.Input.Keyboard.JustDown(this.switchKeys.THREE)) {
-      this.leftWeapon.stop?.();
-      this.leftWeapon = this.laserGun;
-    }
+      this.selectWeaponSlot(1);
+    } 
 
     this.move();
 
-    if (
-      Phaser.Input.Keyboard.JustDown(
-      this.reloadKey
-    )
-    ) {
-      this.leftWeapon?.reload?.();
+    if (Phaser.Input.Keyboard.JustDown(this.reloadKey)) {
+      this.activeWeapon?.reload?.();
     }
     
     const pointer = this.scene.input.activePointer;
 
-    const triggerStarted = pointer.isDown && !this.fireButtonDown;
-
-    if (pointer.isDown) {
-      this.leftWeapon?.shoot(
-        pointer,
-        triggerStarted
-      );
-
-      this.fireButtonDown = true;
-    } else {
-      if (this.fireButtonDown) {
-          this.leftWeapon?.release?.();
+    if (this.blockFireUntilRelease) {
+      if (!pointer.isDown) {
+        this.activeWeapon?.release?.();
+        this.blockFireUntilRelease = false;
+        this.fireButtonDown = false;
       }
+    } else {
+      const triggerStarted =
+        pointer.isDown && !this.fireButtonDown;
 
-      this.fireButtonDown = false;
+      if (pointer.isDown) {
+        this.activeWeapon?.shoot(pointer, triggerStarted);
+        this.fireButtonDown = true;
+      } else {
+        if (this.fireButtonDown) {
+          this.activeWeapon?.release?.();
+        }
+
+        this.fireButtonDown = false;
+      }
     }
 
-    this.leftWeapon?.update?.(pointer);
+    this.activeWeapon?.update?.(pointer);
   }
 
   move() {
@@ -143,11 +199,11 @@ export default class Player {
     );
   }
 
-  shoot() {
+  shoot() { 
     const pointer = this.scene.input.activePointer;
 
-    if (pointer.isDown && this.leftWeapon) {
-      this.leftWeapon.shoot(pointer);
+    if (pointer.isDown && this.activeWeapon) {
+      this.activeWeapon.shoot(pointer);
     }
   }
 

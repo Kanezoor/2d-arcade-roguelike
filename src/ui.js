@@ -52,7 +52,7 @@ export function drawUI(scene) {
     weaponPanelHeight
   );
 
-  const weapon = scene.player.leftWeapon;
+  const weapon = scene.player.activeWeapon;
 
   if (weapon) {
     scene.weaponNameText.setText(
@@ -78,6 +78,10 @@ export function drawUI(scene) {
     } else {
       scene.weaponReloadText.setText('');
     }
+  } else {
+    scene.weaponNameText.setText('No weapon');
+    scene.weaponAmmoText.setText('');
+    scene.weaponReloadText.setText('');
   }
 
   const barX = 20;

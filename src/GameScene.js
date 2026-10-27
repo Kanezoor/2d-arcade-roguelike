@@ -7,6 +7,12 @@ import DamageSystem from "./combat/DamageSystem.js";
 import DamageContext from "./combat/DamageContext.js";
 import DamageType from "./combat/DamageType.js";
 import LevelUpManager from "./managers/LevelUpManager.js";
+import InventoryUI from "./inventory/InventoryUI.js";
+import InventoryItem from "./inventory/InventoryItem.js";
+import { ITEM_DEFINITIONS } from "./inventory/ItemDefinitions.js";
+import WorldItem from "./items/WorldItem.js";
+import WorldItemPickupSystem from "./systems/WorldItemPickupSystem.js";
+import WorldWeapon from "./items/WorldWeapon.js";
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -26,15 +32,56 @@ export class GameScene extends Phaser.Scene {
     this.levelUpManager = new LevelUpManager(this);
     this.isLevelUpOpen = false;
 
+    this.isInventoryOpen = false;
+
+    this.inventoryUI = new InventoryUI(
+      this,
+      this.player.inventory
+    );
+
+    this.input.keyboard.on("keydown-TAB", event => {
+      event.preventDefault();
+
+      if (this.isLevelUpOpen) {
+        return;
+      }   
+
+      if (this.inventoryUI.isOpen) {
+        this.inventoryUI.close();
+      } else {
+        this.inventoryUI.open();
+      }
+    });
+
     createUI(this);
 
     createEnemies(this);
+
+    this.player.inventory.addItem(
+      new InventoryItem(ITEM_DEFINITIONS.precision),
+      0,
+      0
+    );
+
+    this.player.inventory.addItem(
+      new InventoryItem(ITEM_DEFINITIONS.medkit),
+      2,
+      0
+    );
+
+    this.player.inventory.addItem(
+      new InventoryItem(ITEM_DEFINITIONS.salvagePart),
+      4,
+      0
+    );
 
     this.bosses = this.add.group();
     this.roomManager = new RoomManager(this);
     this.projectiles = this.add.group();
     this.particles = this.add.group();
     this.rewards = this.add.group();
+    this.worldItems = this.add.group();
+    this.worldItemPickupSystem = new WorldItemPickupSystem(this);  
 
     this.score = 0;
 
@@ -85,7 +132,122 @@ export class GameScene extends Phaser.Scene {
     );
 
     this.roomManager.start();
+
+    this.createWorldWeapon(this.player.laserGun);
   }
+
+  
+  createWorldItem(item) {
+    if (!item || !this.player?.sprite || !this.worldItems) {
+      return null;
+    }
+
+    const position = this.getWorldItemDropPosition();
+
+    const footprint =
+      this.player.inventory.getRotatedFootprint(item);
+
+    const worldItem = new WorldItem(
+      this,
+      item,
+      position.x,
+      position.y,
+      footprint
+    );
+
+    this.worldItems.add(worldItem.container);
+
+    return worldItem;
+  }
+
+  createWorldWeapon(weapon) {
+    if (
+      !weapon ||
+      !this.player?.sprite ||
+      !this.worldItems
+    ) {
+      return null;
+    }
+
+    const position = this.getWorldItemDropPosition();
+
+    const worldWeapon = new WorldWeapon(
+      this,
+      weapon,
+      position.x,
+      position.y
+    );
+
+    this.worldItems.add(worldWeapon.container);
+
+    return worldWeapon;
+  }
+
+  getWorldItemDropPosition() {
+    const playerSprite = this.player.sprite;
+    const room = this.roomManager?.currentRoomData;
+
+    const roomWidth = room?.width ?? this.scale.width;
+    const roomHeight = room?.height ?? this.scale.height;
+
+    const existingCount = this.worldItems.countActive(true);
+
+    const angle = existingCount * 2.399963229728653;
+    const distance = 48 + Math.sqrt(existingCount) * 20;
+
+    let x = playerSprite.x + Math.cos(angle) * distance;
+    let y = playerSprite.y + Math.sin(angle) * distance;
+
+    const margin = 45;
+
+    if (room?.shape === "circle") {
+      const centerX = roomWidth / 2;
+      const centerY = roomHeight / 2;
+
+      const safeRadius =
+        Math.min(roomWidth, roomHeight) / 2 - margin;
+
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const currentDistance = Math.hypot(dx, dy);
+
+      if (currentDistance > safeRadius) {
+        const scale = safeRadius / currentDistance;
+
+        x = centerX + dx * scale;
+        y = centerY + dy * scale;
+      }
+    } else {
+      x = Phaser.Math.Clamp(
+        x,
+        margin,
+        roomWidth - margin
+      );
+
+      y = Phaser.Math.Clamp(
+        y,
+        margin,
+        roomHeight - margin
+      );
+    }
+
+    return { x, y };
+  }
+
+  clearWorldItems() {
+    if (!this.worldItems) {
+      return;
+    }
+
+    [...this.worldItems.getChildren()].forEach(object => {
+      if (object.worldItem) {
+        object.worldItem.destroy();
+      } else {
+        object.destroy();
+      }
+    });
+  }
+
 
   handleMatterCollision(pair) {
 
@@ -393,7 +555,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
-    if (this.isLevelUpOpen) {
+    this.worldItemPickupSystem?.update();
+    
+    if (this.isLevelUpOpen || this.isInventoryOpen) {
       return;
     }
 
