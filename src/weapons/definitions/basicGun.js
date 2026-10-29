@@ -25,7 +25,7 @@ const basicGun = {
   },
   
   slots: 2,
-  fireMode: 'automatic',
+  fireMode: 'single',
   reloadMode: 'magazine',
 };
 

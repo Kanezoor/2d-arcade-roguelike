@@ -1,6 +1,7 @@
 import { spawnEnemy } from "./EnemyManager.js";
 import Boss from "../entities/Boss.js";
 import Reward from "../entities/Reward.js";
+import FloorModel from "../world/FloorModel.js";
 
 export default class RoomManager {
   constructor(scene) {
@@ -9,6 +10,10 @@ export default class RoomManager {
     this.currentRoom = 0;
     this.rooms = [
       {
+        id: "room-01",
+        gridPosition: { x: 1, y: 3 },
+        type: "combat",
+        isStartRoom: true,
         width: 800,
         height: 800,
         shape: 'rectangle',
@@ -21,6 +26,9 @@ export default class RoomManager {
         ],
       },
       {
+        id: "room-02",
+        gridPosition: { x: 2, y: 3 },
+        type: "combat",
         width: 800,
         height: 800,
         shape: 'rectangle',
@@ -31,6 +39,9 @@ export default class RoomManager {
         ],
       },
       {
+        id: "room-03",
+        gridPosition: { x: 3, y: 3 },
+        type: "combat",
         width: 800,
         height: 650,
         shape: 'rectangle',
@@ -42,6 +53,9 @@ export default class RoomManager {
         ],
       },
       {
+        id: "room-04",
+        gridPosition: { x: 4, y: 3 },
+        type: "combat",
         width: 800,
         height: 800,
         shape: 'circle',
@@ -53,6 +67,68 @@ export default class RoomManager {
         ],
       }
     ];
+
+    this.bossRoomDefinition = {
+      id: "boss-room",
+      gridPosition: { x: 5, y: 3 },
+      type: "boss",
+      isBossRoom: true,
+      shape: "circle",
+      width: 800,
+      height: 800,
+      background: 0xeee0ff,
+      enemies: [],
+    };
+
+    this.floor = new FloorModel({
+      id: "floor-1",
+      depth: 1,
+      seed: null,
+      gridWidth: 7,
+      gridHeight: 7,
+      rooms: [
+        ...this.rooms,
+        this.bossRoomDefinition,
+      ],
+      startRoomId: "room-01",
+      bossRoomId: "boss-room",
+      connections: [
+        {
+          id: "room-01--room-02",
+          roomAId: "room-01",
+          roomBId: "room-02",
+          directionFromA: "east",
+        },
+        {
+          id: "room-02--room-03",
+          roomAId: "room-02",
+          roomBId: "room-03",
+          directionFromA: "east",
+        },
+        {
+          id: "room-03--room-04",
+          roomAId: "room-03",
+          roomBId: "room-04",
+          directionFromA: "east",
+        },
+        {
+          id: "room-04--boss-room",
+          roomAId: "room-04",
+          roomBId: "boss-room",
+          directionFromA: "east",
+        },
+      ],
+    });
+
+    // Reuse the model's room definitions in the existing manager.
+    this.rooms = this.rooms.map(
+      room => this.floor.getRoomDefinition(room.id)
+    );
+
+    this.bossRoomDefinition =
+      this.floor.getRoomDefinition("boss-room");
+
+    this.currentRoomId = null;
 
     this.isTransitioning = false;
     this.isRunComplete = false;
@@ -66,6 +142,7 @@ export default class RoomManager {
 
   start() {
     this.startNextRoom();
+    console.log(this.floor.toJSON());
   }
 
   startNextRoom() {
@@ -83,6 +160,9 @@ export default class RoomManager {
 
     this.currentRoomData = this.rooms[this.currentRoom - 1];
     const room = this.currentRoomData;
+
+    this.currentRoomId = room.id;
+    this.floor.setActiveRoom(room.id);
    
     this.createRoomBoundary();
 
@@ -270,6 +350,8 @@ export default class RoomManager {
     this.isTransitioning = true;
 
     this.isRoomCleared = true;
+
+    this.floor.getRoomState(this.currentRoomId)?.markCleared();
     this.isDoorOpen = true;
 
     this.spawnReward();
@@ -281,6 +363,9 @@ export default class RoomManager {
 
   startBossRoom() {
     this.isBossRoom = true;
+    this.currentRoomId = this.bossRoomDefinition.id;
+    this.currentRoomData = this.bossRoomDefinition;
+    this.floor.setActiveRoom(this.currentRoomId);
     this.isTransitioning = false;
 
     const bossSprite = this.scene.matter.add.sprite(
@@ -303,6 +388,8 @@ export default class RoomManager {
 
   bossDefeated() {
     if (this.isRunComplete) return;
+
+    this.floor.getRoomState(this.currentRoomId)?.markCleared();
     this.isRunComplete = true;
     this.isBossRoom = false;
 
@@ -344,7 +431,7 @@ export default class RoomManager {
 
     // new Reward(sprite, 'magneticCore');
     new Reward(sprite, 'piercingCore');
-
+    console.log(this.floor.toJSON());
     console.log('Reward spawned');
   }
 
