@@ -1,147 +1,61 @@
 import { spawnEnemy } from "./EnemyManager.js";
 import Boss from "../entities/Boss.js";
 import Reward from "../entities/Reward.js";
-import FloorModel from "../world/FloorModel.js";
+import FloorGenerator from "../world/FloorGenerator.js";
+import {
+  getDoorPosition,
+  getExitForDirection,
+  getOppositeDirection,
+  getRoomEntryPosition,
+} from "../world/RoomNavigation.js";
 
 export default class RoomManager {
   constructor(scene) {
     this.scene = scene;
 
     this.currentRoom = 0;
-    this.rooms = [
-      {
-        id: "room-01",
-        gridPosition: { x: 1, y: 3 },
-        type: "combat",
-        isStartRoom: true,
-        width: 800,
-        height: 800,
-        shape: 'rectangle',
-        background: 0xffffff,
-        enemies: [
-          // {type: 'brute', count: 3},
-          // {type: 'blue', count: 5},
-          {type: 'ranged', count: 3},
-          // {type: 'charger', count: 3}
-        ],
-      },
-      {
-        id: "room-02",
-        gridPosition: { x: 2, y: 3 },
-        type: "combat",
-        width: 800,
-        height: 800,
-        shape: 'rectangle',
-        background: 0xe8e8e8,
-        enemies: [
-          {type: 'blue', count: 5},
-          {type: 'brute', count: 1},
-        ],
-      },
-      {
-        id: "room-03",
-        gridPosition: { x: 3, y: 3 },
-        type: "combat",
-        width: 800,
-        height: 650,
-        shape: 'rectangle',
-        background: 0xdfefff,
-        enemies: [
-          {type: 'blue', count: 4},
-          {type: 'brute', count: 2},
-          {type: 'blue', count: 1}
-        ],
-      },
-      {
-        id: "room-04",
-        gridPosition: { x: 4, y: 3 },
-        type: "combat",
-        width: 800,
-        height: 800,
-        shape: 'circle',
-        background: 0xeee0ff,
-        enemies: [
-          {type: 'blue', count: 2},
-          {type: 'brute', count: 4},
-          {type: 'blue', count: 1}
-        ],
-      }
-    ];
-
-    this.bossRoomDefinition = {
-      id: "boss-room",
-      gridPosition: { x: 5, y: 3 },
-      type: "boss",
-      isBossRoom: true,
-      shape: "circle",
-      width: 800,
-      height: 800,
-      background: 0xeee0ff,
-      enemies: [],
-    };
-
-    this.floor = new FloorModel({
+  
+    this.floor = FloorGenerator.generate({
       id: "floor-1",
       depth: 1,
-      seed: null,
+      seed: null, // null creates a new random seed for each run.
+      minRooms: 10,
+      maxRooms: 15,
       gridWidth: 7,
       gridHeight: 7,
-      rooms: [
-        ...this.rooms,
-        this.bossRoomDefinition,
-      ],
-      startRoomId: "room-01",
-      bossRoomId: "boss-room",
-      connections: [
-        {
-          id: "room-01--room-02",
-          roomAId: "room-01",
-          roomBId: "room-02",
-          directionFromA: "east",
-        },
-        {
-          id: "room-02--room-03",
-          roomAId: "room-02",
-          roomBId: "room-03",
-          directionFromA: "east",
-        },
-        {
-          id: "room-03--room-04",
-          roomAId: "room-03",
-          roomBId: "room-04",
-          directionFromA: "east",
-        },
-        {
-          id: "room-04--boss-room",
-          roomAId: "room-04",
-          roomBId: "boss-room",
-          directionFromA: "east",
-        },
-      ],
+      roomWidth: 800,
+      roomHeight: 800,
+      roomShape: "rectangle",
+      background: 0xffffff,
     });
 
+    this.rooms = [...this.floor.rooms.values()];
+    this.bossRoomDefinition = this.floor.getRoomDefinition(
+      this.floor.bossRoomId
+    );
+    this.currentRoomId = null;
+    this.currentRoomData = null;
+
+    this.doors = [];
+    this.door = null; // Temporary compatibility alias for any existing debug code.
+    this.walls = [];
+    this.isEnteringDoor = false;
+
+    
     // Reuse the model's room definitions in the existing manager.
     this.rooms = this.rooms.map(
       room => this.floor.getRoomDefinition(room.id)
     );
-
-    this.bossRoomDefinition =
-      this.floor.getRoomDefinition("boss-room");
-
-    this.currentRoomId = null;
 
     this.isTransitioning = false;
     this.isRunComplete = false;
     this.isBossRoom = false
     this.isRoomCleared = false;
     this.isDoorOpen = false;
-
-    this.door = null;
-
   }
 
   start() {
-    this.startNextRoom();
+    this.loadRoom(this.floor.startRoomId);
     console.log(this.floor.toJSON());
   }
 
@@ -191,6 +105,111 @@ export default class RoomManager {
         spawnEnemy(this.scene, enemyGroup.type);
       }
     }
+  }
+
+  loadRoom(roomId, entryDirection = null) {
+    const room = this.floor.getRoomDefinition(roomId);
+
+    if (!room) {
+      console.error(`Cannot load unknown room: ${roomId}`);
+      return false;
+    }
+
+    // Remove runtime objects belonging to the previous room.
+    this.clearDoors();
+    this.clearRoomWalls();
+    this.clearRewards();
+    this.scene.enemies?.clear(true, true);
+    this.scene.projectiles?.clear(true, true);
+
+    this.currentRoomId = room.id;
+    this.currentRoomData = room;
+    this.currentRoom = [...this.floor.rooms.keys()].indexOf(room.id) + 1;
+    this.floor.setActiveRoom(room.id);
+
+    const roomState = this.floor.getRoomState(room.id);
+
+    this.isRoomCleared = roomState.cleared;
+    this.isDoorOpen = roomState.cleared;
+    this.isBossRoom = room.isBossRoom || room.type === "boss";
+    this.isTransitioning = false;
+    this.isEnteringDoor = false;
+
+    this.scene.cameras.main.setBackgroundColor(room.background);
+    this.createRoomBoundary();
+
+    if (entryDirection) {
+      const entryPosition = getRoomEntryPosition(
+        room,
+        entryDirection
+      );
+
+      this.scene.player.sprite.setPosition(
+        entryPosition.x,
+        entryPosition.y
+      );
+      this.scene.player.sprite.setVelocity(0, 0);
+    }
+
+    if (this.isBossRoom) {
+      this.startBossRoom();
+      return true;
+    }
+
+    this.createExitDoors();
+
+    if (roomState.cleared) {
+      this.doors.forEach(door => {
+        if (!door.isLocked) {
+          door.setFillStyle(0x00aa44);
+        }
+      });
+
+      return true;
+    }
+
+    const enemyGroups = this.getEnemyGroupsForRoom(room);
+
+    for (const enemyGroup of enemyGroups) {
+      for (let index = 0; index < enemyGroup.count; index++) {
+        spawnEnemy(this.scene, enemyGroup.type);
+      }
+    }
+
+    return true;
+  }
+
+  getEnemyGroupsForRoom(room) {
+  
+    if (Array.isArray(room.enemies) && room.enemies.length > 0) {
+      return room.enemies;
+    }
+
+    if (room.type !== "combat") {
+      return [];
+    }
+
+  
+    const roomNumber = Number(room.id.match(/room-(\d+)$/)?.[1] ?? 1);
+    const variant = roomNumber % 3;
+
+    if (variant === 0) {
+      return [
+        { type: "blue", count: 3 },
+        { type: "ranged", count: 1 },
+      ];
+    }
+
+    if (variant === 1) {
+      return [
+        { type: "blue", count: 4 },
+      ];
+    }
+
+    return [
+      { type: "blue", count: 2 },
+      { type: "brute", count: 1 },
+    ];
   }
 
   createRectangularWalls() {
@@ -311,10 +330,69 @@ export default class RoomManager {
     }
   }
 
+  createExitDoors() {
+    this.clearDoors();
+
+    const exits = this.floor.getExits(
+      this.currentRoomId,
+      { includeLocked: true }
+    );
+
+    for (const exit of exits) {
+      const position = getDoorPosition(
+        this.currentRoomData,
+        exit.direction
+      );
+
+      const isOpen = this.isRoomCleared && !exit.locked;
+      const color = exit.locked
+        ? 0x555555
+        : isOpen
+          ? 0x00aa44
+          : 0xcc3333;
+
+      const door = this.scene.add.rectangle(
+        position.x,
+        position.y,
+        position.width,
+        position.height,
+        color,
+        1
+      );
+
+      this.scene.matter.add.gameObject(door, {
+        isStatic: true,
+        isSensor: true,
+      });
+
+      door.isDoor = true;
+      door.doorDirection = exit.direction;
+      door.targetRoomId = exit.toRoomId;
+      door.connectionId = exit.connectionId;
+      door.isLocked = exit.locked;
+
+      this.doors.push(door);
+    }
+
+    this.door = this.doors[0] ?? null;
+  }
+
+  clearDoors() {
+    if (!this.doors) {
+      this.doors = [];
+      this.door = null;
+      return;
+    }
+
+    this.doors.forEach(door => door.destroy());
+    this.doors = [];
+    this.door = null;
+  }
+
   createRoomBoundary() {
     const shape = this.currentRoomData.shape;
 
-    if(shape === 'rectangle') {
+    if (shape === "rectangle" || shape === "square") {
       this.createRectangularWalls();
     }
 
@@ -331,11 +409,13 @@ export default class RoomManager {
   }
 
   update() {
-    if (this.isTransitioning || this.isRunComplete || this.isBossRoom) {
-      return;
-    }
-
-    if (this.scene.isGameOver) {
+    if (
+      this.isTransitioning ||
+      this.isRunComplete ||
+      this.isBossRoom ||
+      this.scene.isGameOver ||
+      this.isRoomCleared
+    ) {
       return;
     }
 
@@ -347,31 +427,39 @@ export default class RoomManager {
   }
 
   completeRoom() {
+    if (this.isRoomCleared || this.isBossRoom) {
+      return;
+    }
+
     this.isTransitioning = true;
-
     this.isRoomCleared = true;
-
-    this.floor.getRoomState(this.currentRoomId)?.markCleared();
     this.isDoorOpen = true;
 
-    this.spawnReward();
+    this.floor
+      .getRoomState(this.currentRoomId)
+      ?.markCleared();
 
-    if (this.door) {
-      this.door.setFillStyle(0x00ff00);
+    if (this.currentRoomData.type === "combat") {
+      this.spawnReward();
     }
+
+    this.doors.forEach(door => {
+      if (!door.isLocked) {
+        door.setFillStyle(0x00aa44);
+      }
+    });
   }
 
   startBossRoom() {
     this.isBossRoom = true;
-    this.currentRoomId = this.bossRoomDefinition.id;
-    this.currentRoomData = this.bossRoomDefinition;
-    this.floor.setActiveRoom(this.currentRoomId);
     this.isTransitioning = false;
 
+    const room = this.currentRoomData;
+
     const bossSprite = this.scene.matter.add.sprite(
-      400,
+      room.width / 2,
       100,
-      'boss',
+      "boss",
       undefined,
       {
         isStatic: true,
@@ -383,35 +471,48 @@ export default class RoomManager {
     this.scene.bosses.add(bossSprite);
 
     this.boss = new Boss(bossSprite, this.scene);
-
   }
 
   bossDefeated() {
     if (this.isRunComplete) return;
 
-    this.floor.getRoomState(this.currentRoomId)?.markCleared();
+    this.floor
+      .getRoomState(this.currentRoomId)
+      ?.markCleared();
+
     this.isRunComplete = true;
     this.isBossRoom = false;
 
-    console.log('Run Complete!');
-    
+    console.log("Run Complete!");
   }
 
-  enterDoor() {
-    if (!this.isRoomCleared || !this.isDoorOpen) {
-      return;
+  enterDoor(direction) {
+    if (
+      !this.isRoomCleared ||
+      !this.isDoorOpen ||
+      this.isEnteringDoor
+    ) {
+      return false;
     }
 
-    this.isTransitioning = true;
+    const exit = getExitForDirection(
+      this.floor,
+      this.currentRoomId,
+      direction
+    );
 
-    if (this.door) {
-      this.door.destroy();
-      this.door = null;
+    if (!exit) {
+      return false;
     }
-    this.clearRoomWalls();
-    this.clearRewards();
+
+    this.isEnteringDoor = true;
+
     this.scene.clearWorldItems();
-    this.startNextRoom();
+
+    return this.loadRoom(
+      exit.toRoomId,
+      getOppositeDirection(exit.direction)
+    );
   }
 
   spawnReward() {

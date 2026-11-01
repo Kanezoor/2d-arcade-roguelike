@@ -310,7 +310,7 @@ export class GameScene extends Phaser.Scene {
       objectA === this.player.sprite &&
       objectB.isDoor
     ) {
-      this.roomManager.enterDoor();
+      this.roomManager.enterDoor(objectB.doorDirection);
       return;
     }
 
@@ -318,7 +318,7 @@ export class GameScene extends Phaser.Scene {
       objectB === this.player.sprite &&
       objectA.isDoor
     ) {
-      this.roomManager.enterDoor();
+      this.roomManager.enterDoor(objectA.doorDirection);
       return;
     }
 
