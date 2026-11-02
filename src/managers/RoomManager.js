@@ -8,10 +8,15 @@ import {
   getOppositeDirection,
   getRoomEntryPosition,
 } from "../world/RoomNavigation.js";
+import RoomTransitionController from "../world/RoomTransitionController.js";
 
 export default class RoomManager {
   constructor(scene) {
     this.scene = scene;
+    this.roomTransitionController = new RoomTransitionController(scene, {
+      duration: 260,
+      ease: "Sine.easeInOut",
+    });
 
     this.currentRoom = 0;
   
@@ -490,7 +495,8 @@ export default class RoomManager {
     if (
       !this.isRoomCleared ||
       !this.isDoorOpen ||
-      this.isEnteringDoor
+      this.isEnteringDoor ||
+      this.scene.isRoomTransitioning
     ) {
       return false;
     }
@@ -507,12 +513,29 @@ export default class RoomManager {
 
     this.isEnteringDoor = true;
 
-    this.scene.clearWorldItems();
+    this.roomTransitionController.transition({
+      direction,
+      oldBackground: this.currentRoomData?.background,
+      loadDestination: () => {
+        // This preserves the current cleanup behavior for now.
+        // Persistent dropped items will be handled in a later checkpoint.
+        this.scene.clearWorldItems();
 
-    return this.loadRoom(
-      exit.toRoomId,
-      getOppositeDirection(exit.direction)
-    );
+        return this.loadRoom(
+          exit.toRoomId,
+          getOppositeDirection(exit.direction)
+        );
+      },
+      getNewBackground: () => this.currentRoomData?.background,
+    })
+      .catch(error => {
+        console.error("Room transition failed:", error);
+      })
+      .finally(() => {
+        this.isEnteringDoor = false;
+      });
+
+    return true;
   }
 
   spawnReward() {

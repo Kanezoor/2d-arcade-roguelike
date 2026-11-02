@@ -33,6 +33,7 @@ export class GameScene extends Phaser.Scene {
     this.isLevelUpOpen = false;
 
     this.isInventoryOpen = false;
+    this.isRoomTransitioning = false;
 
     this.inventoryUI = new InventoryUI(
       this,
@@ -42,11 +43,11 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-TAB", event => {
       event.preventDefault();
 
-      if (this.isLevelUpOpen) {
+      if (this.isLevelUpOpen || this.isRoomTransitioning) {
         return;
       }   
 
-      if (this.inventoryUI.isOpen) {
+      if (this.inventoryUI.isOpen ) {
         this.inventoryUI.close();
       } else {
         this.inventoryUI.open();
@@ -250,6 +251,10 @@ export class GameScene extends Phaser.Scene {
 
 
   handleMatterCollision(pair) {
+
+    if (this.isRoomTransitioning) {
+      return;
+    }
 
     const objectA = pair.bodyA.gameObject;
     const objectB = pair.bodyB.gameObject;
@@ -555,6 +560,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
+    if (this.isRoomTransitioning) {
+      return;
+    }
+
     this.worldItemPickupSystem?.update();
     
     if (this.isLevelUpOpen || this.isInventoryOpen) {

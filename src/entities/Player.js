@@ -129,7 +129,7 @@ export default class Player {
     }
   }
   update() {
-    if (this.scene.isGameOver) return;
+    if (this.scene.isGameOver || this.scene.isRoomTransitioning) return;
 
     if (Phaser.Input.Keyboard.JustDown(this.switchKeys.ONE)) {
       this.selectWeaponSlot(0);
