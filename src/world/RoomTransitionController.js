@@ -241,6 +241,7 @@ export default class RoomTransitionController {
     let incomingSnapshot = null;
     let previousHudDepths = [];
     let matterPaused = false;
+    let previousMatterDebugState = null;
 
     this.isTransitioning = true;
     scene.isRoomTransitioning = true;
@@ -255,6 +256,17 @@ export default class RoomTransitionController {
         player.fireButtonDown = Boolean(scene.input?.activePointer?.isDown);
       }
 
+      const matterWorld = scene.matter?.world;
+
+      if (matterWorld) {
+        previousMatterDebugState = {
+        drawDebug: matterWorld.drawDebug,
+        graphicVisible: matterWorld.debugGraphic?.visible ?? false,
+      };
+
+      matterWorld.drawDebug = false;
+      matterWorld.debugGraphic?.setVisible(false);
+}
       // The Matter world is paused only for the short visual transition.
       scene.matter?.world?.pause?.();
       matterPaused = Boolean(scene.matter?.world?.resume);
@@ -290,6 +302,16 @@ export default class RoomTransitionController {
 
       if (matterPaused) {
         scene.matter.world.resume();
+      }
+      if (previousMatterDebugState && scene.matter?.world) {
+        const matterWorld = scene.matter.world;
+
+        matterWorld.drawDebug =
+          previousMatterDebugState.drawDebug;
+
+        matterWorld.debugGraphic?.setVisible(
+          previousMatterDebugState.graphicVisible
+        );
       }
 
       scene.isRoomTransitioning = false;
