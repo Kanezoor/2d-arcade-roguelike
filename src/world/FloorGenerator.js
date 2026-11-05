@@ -197,6 +197,9 @@ function chooseRoomTypes({ roomNodes, mainPathIds, random }) {
 export default class FloorGenerator {
   static generate({
     id = "floor-1",
+    archetypeId = "default",
+    variantId = "default",
+    generationVersion = 1,
     depth = 1,
     seed = null,
     minRooms = 10,
@@ -366,6 +369,9 @@ export default class FloorGenerator {
 
     return new FloorModel({
       id,
+      archetypeId,
+      variantId,
+      generationVersion,
       depth,
       seed: actualSeed,
       gridWidth,

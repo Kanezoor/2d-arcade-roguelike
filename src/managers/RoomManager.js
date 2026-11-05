@@ -2,6 +2,8 @@ import { spawnEnemy } from "./EnemyManager.js";
 import Boss from "../entities/Boss.js";
 import Reward from "../entities/Reward.js";
 import FloorGenerator from "../world/FloorGenerator.js";
+import FloorArchetype from "../world/FloorArchetype.js";
+import RunState from "../world/RunState.js";
 import {
   getDoorPosition,
   getExitForDirection,
@@ -19,20 +21,48 @@ export default class RoomManager {
     });
 
     this.currentRoom = 0;
-  
+
+    // Archetypes are static game content; each generated floor is a separate instance.
+    this.floorArchetype = new FloorArchetype({
+      id: "prototype-dungeon",
+      name: "Prototype Dungeon",
+      generationOptions: {
+        minRooms: 10,
+        maxRooms: 15,
+        gridWidth: 7,
+        gridHeight: 7,
+        roomWidth: 800,
+        roomHeight: 800,
+        roomShape: "rectangle",
+        background: 0xffffff,
+      },
+      variants: [
+        { id: "default", name: "Default" },
+      ],
+    });
+
+    const initialVariantId = "default";
+    const floorGenerationOptions = this.floorArchetype.resolveGenerationOptions(
+      initialVariantId
+    );
+
     this.floor = FloorGenerator.generate({
-      id: "floor-1",
+      ...floorGenerationOptions,
+      id: "floor-instance-001",
+      archetypeId: this.floorArchetype.id,
+      variantId: initialVariantId,
+      generationVersion: 1,
       depth: 1,
       seed: null, // null creates a new random seed for each run.
-      minRooms: 10,
-      maxRooms: 15,
-      gridWidth: 7,
-      gridHeight: 7,
-      roomWidth: 800,
-      roomHeight: 800,
-      roomShape: "rectangle",
-      background: 0xffffff,
     });
+
+    this.runState = new RunState({
+      seed: this.floor.seed,
+      floors: [this.floor],
+    });
+
+    // The registry owns all floor instances for this run.
+    this.floorRegistry = this.runState.floorRegistry;
 
     this.rooms = [...this.floor.rooms.values()];
     this.bossRoomDefinition = this.floor.getRoomDefinition(
@@ -62,6 +92,7 @@ export default class RoomManager {
   start() {
     this.loadRoom(this.floor.startRoomId);
     console.log(this.floor.toJSON());
+    console.log(this.runState.toJSON());
   }
 
   startNextRoom() {
@@ -81,7 +112,7 @@ export default class RoomManager {
     const room = this.currentRoomData;
 
     this.currentRoomId = room.id;
-    this.floor.setActiveRoom(room.id);
+    this.runState.setCurrentLocation(this.floor.id, room.id);
    
     this.createRoomBoundary();
 
@@ -130,7 +161,7 @@ export default class RoomManager {
     this.currentRoomId = room.id;
     this.currentRoomData = room;
     this.currentRoom = [...this.floor.rooms.keys()].indexOf(room.id) + 1;
-    this.floor.setActiveRoom(room.id);
+    this.runState.setCurrentLocation(this.floor.id, room.id);
 
     const roomState = this.floor.getRoomState(room.id);
 
@@ -484,6 +515,8 @@ export default class RoomManager {
     this.floor
       .getRoomState(this.currentRoomId)
       ?.markCleared();
+
+    this.runState.markFloorCompleted(this.floor.id);
 
     this.isRunComplete = true;
     this.isBossRoom = false;

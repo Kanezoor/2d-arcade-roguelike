@@ -30,8 +30,14 @@ function cloneSerializable(value) {
 export default class FloorModel {
   constructor({
     id,
+    archetypeId = "default",
+    variantId = "default",
+    generationVersion = 1,
     depth = 1,
     seed = null,
+    visited = false,
+    visitCount = 0,
+    completed = false,
     gridWidth = 7,
     gridHeight = 7,
     rooms = [],
@@ -45,6 +51,15 @@ export default class FloorModel {
       throw new TypeError("FloorModel requires a non-empty string id.");
     }
 
+    if (typeof archetypeId !== "string" || archetypeId.trim() === "") {
+      throw new TypeError("FloorModel requires a non-empty archetypeId.");
+    }
+
+    if (typeof variantId !== "string" || variantId.trim() === "") {
+      throw new TypeError("FloorModel requires a non-empty variantId.");
+    }
+
+    assertPositiveInteger(generationVersion, "Floor generationVersion");
     assertPositiveInteger(depth, "Floor depth");
     assertPositiveInteger(gridWidth, "Floor gridWidth");
     assertPositiveInteger(gridHeight, "Floor gridHeight");
@@ -54,8 +69,16 @@ export default class FloorModel {
     }
 
     this.id = id;
+    this.archetypeId = archetypeId;
+    this.variantId = variantId;
+    this.generationVersion = generationVersion;
     this.depth = depth;
     this.seed = seed;
+    this.visited = Boolean(visited);
+    this.visitCount = Number.isInteger(visitCount) && visitCount >= 0
+      ? visitCount
+      : 0;
+    this.completed = Boolean(completed);
     this.gridWidth = gridWidth;
     this.gridHeight = gridHeight;
     this.rooms = new Map();
@@ -118,6 +141,15 @@ export default class FloorModel {
     if (activeRoomId !== null) {
       this.setActiveRoom(activeRoomId, { markVisited: false });
     }
+  }
+
+  markVisited() {
+    this.visited = true;
+    this.visitCount += 1;
+  }
+
+  markCompleted() {
+    this.completed = true;
   }
 
   assertRoomFitsGrid(room) {
@@ -299,8 +331,14 @@ export default class FloorModel {
   toJSON() {
     return {
       id: this.id,
+      archetypeId: this.archetypeId,
+      variantId: this.variantId,
+      generationVersion: this.generationVersion,
       depth: this.depth,
       seed: this.seed,
+      visited: this.visited,
+      visitCount: this.visitCount,
+      completed: this.completed,
       gridWidth: this.gridWidth,
       gridHeight: this.gridHeight,
       startRoomId: this.startRoomId,

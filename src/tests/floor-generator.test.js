@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import FloorGenerator from "../src/world/FloorGenerator.js";
+import FloorGenerator from "../world/FloorGenerator.js";
 
 function getReachableRoomIds(floor, startRoomId) {
   const visited = new Set([startRoomId]);
