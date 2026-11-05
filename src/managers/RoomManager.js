@@ -5,11 +5,17 @@ import FloorGenerator from "../world/FloorGenerator.js";
 import FloorArchetype from "../world/FloorArchetype.js";
 import RunState from "../world/RunState.js";
 import {
-  getDoorPosition,
   getExitForDirection,
   getOppositeDirection,
   getRoomEntryPosition,
 } from "../world/RoomNavigation.js";
+import RoomEntranceRuntime from "../world/RoomEntranceRuntime.js";
+import {
+  getArcOpeningAngles,
+  getBoundaryOpeningSegments,
+  getRectangularEdgeOpenings,
+  getRoomEntrySpawnPosition,
+} from "../world/RoomEntranceGeometry.js";
 import RoomTransitionController from "../world/RoomTransitionController.js";
 
 export default class RoomManager {
@@ -72,9 +78,11 @@ export default class RoomManager {
     this.currentRoomData = null;
 
     this.doors = [];
+    this.entranceRuntimes = [];
     this.door = null; // Temporary compatibility alias for any existing debug code.
     this.walls = [];
     this.isEnteringDoor = false;
+    this.entryDirection = null;
 
     
     // Reuse the model's room definitions in the existing manager.
@@ -92,7 +100,6 @@ export default class RoomManager {
   start() {
     this.loadRoom(this.floor.startRoomId);
     console.log(this.floor.toJSON());
-    console.log(this.runState.toJSON());
   }
 
   startNextRoom() {
@@ -161,6 +168,7 @@ export default class RoomManager {
     this.currentRoomId = room.id;
     this.currentRoomData = room;
     this.currentRoom = [...this.floor.rooms.keys()].indexOf(room.id) + 1;
+    this.entryDirection = entryDirection;
     this.runState.setCurrentLocation(this.floor.id, room.id);
 
     const roomState = this.floor.getRoomState(room.id);
@@ -175,10 +183,13 @@ export default class RoomManager {
     this.createRoomBoundary();
 
     if (entryDirection) {
-      const entryPosition = getRoomEntryPosition(
-        room,
-        entryDirection
-      );
+      const entryPort = room.ports.find(port => (
+        port.direction === entryDirection && port.mode === "vestibule"
+      ));
+
+      const entryPosition = entryPort
+        ? getRoomEntrySpawnPosition(room, entryPort)
+        : getRoomEntryPosition(room, entryDirection);
 
       this.scene.player.sprite.setPosition(
         entryPosition.x,
@@ -248,62 +259,174 @@ export default class RoomManager {
     ];
   }
 
+  createStaticWallSegment(start, end, thickness = 20, color = 0x444444) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.hypot(dx, dy);
+
+    if (length < 1) {
+      return null;
+    }
+
+    const wall = this.scene.add.rectangle(
+      (start.x + end.x) / 2,
+      (start.y + end.y) / 2,
+      length + 4,
+      thickness,
+      color
+    );
+
+    this.scene.matter.add.gameObject(wall, { isStatic: true });
+    // After Matter attaches, setRotation updates both the Game Object and
+    // its physics body. Setting it before attachment only rotates the display object.
+    wall.setRotation(Math.atan2(dy, dx));
+    this.walls.push(wall);
+    return wall;
+  }
+
+  createRectangularEdge(direction, length, fixedCoordinate, thickness, color) {
+    const openings = getRectangularEdgeOpenings(
+      this.currentRoomData,
+      this.currentRoomData.ports,
+      direction
+    );
+
+    let cursor = 0;
+    const edgeCoordinate = fixedCoordinate;
+
+    for (const opening of openings) {
+      const start = Math.max(cursor, opening.start);
+      const end = Math.max(start, opening.end);
+
+      if (start > cursor) {
+        const segmentStart = direction === "north" || direction === "south"
+          ? { x: cursor, y: edgeCoordinate }
+          : { x: edgeCoordinate, y: cursor };
+        const segmentEnd = direction === "north" || direction === "south"
+          ? { x: start, y: edgeCoordinate }
+          : { x: edgeCoordinate, y: start };
+        this.createStaticWallSegment(segmentStart, segmentEnd, thickness, color);
+      }
+
+      cursor = Math.max(cursor, end);
+    }
+
+    if (cursor < length) {
+      const segmentStart = direction === "north" || direction === "south"
+        ? { x: cursor, y: edgeCoordinate }
+        : { x: edgeCoordinate, y: cursor };
+      const segmentEnd = direction === "north" || direction === "south"
+        ? { x: length, y: edgeCoordinate }
+        : { x: edgeCoordinate, y: length };
+      this.createStaticWallSegment(segmentStart, segmentEnd, thickness, color);
+    }
+  }
+
   createRectangularWalls() {
     const room = this.currentRoomData;
     const wallThickness = 20;
+    const halfThickness = wallThickness / 2;
     const color = 0x444444;
 
-    const top = this.scene.add.rectangle(
-      room.width / 2,
-      wallThickness / 2,
-      room.width,
-      wallThickness,
-      color
-    );
+    this.walls = [];
+    this.createRectangularEdge("north", room.width, halfThickness, wallThickness, color);
+    this.createRectangularEdge("south", room.width, room.height - halfThickness, wallThickness, color);
+    this.createRectangularEdge("west", room.height, halfThickness, wallThickness, color);
+    this.createRectangularEdge("east", room.height, room.width - halfThickness, wallThickness, color);
+  }
 
-    const bottom = this.scene.add.rectangle(
-      room.width / 2,
-      room.height - wallThickness / 2,
-      room.width,
-      wallThickness,
-      color
-    );
+  splitPolygonEdge(start, end, openingSegments) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSquared = dx * dx + dy * dy;
+    const tolerance = 2;
+    const intervals = [];
 
-    const left = this.scene.add.rectangle(
-      wallThickness / 2,
-      room.height / 2,
-      wallThickness,
-      room.height,
-      color
-    );
+    for (const opening of openingSegments) {
+      const points = [opening.start, opening.end];
+      const distances = points.map(point => Math.abs(
+        dx * (start.y - point.y) - (start.x - point.x) * dy
+      ) / Math.sqrt(lengthSquared));
 
-    const right = this.scene.add. rectangle (
-      room.width - wallThickness / 2,
-      room.height / 2,
-      wallThickness,
-      room.height,
-      color
-    );
+      if (distances.some(distance => distance > tolerance)) {
+        continue;
+      }
 
-    this.walls = [top, bottom, left, right];
+      const parameters = points.map(point => (
+        ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
+      ));
 
-    this.scene.matter.add.gameObject(
-      top,
-      { isStatic: true },
-    );
+      const intervalStart = Math.max(0, Math.min(...parameters));
+      const intervalEnd = Math.min(1, Math.max(...parameters));
 
-    this.scene.matter.add.gameObject(
-      bottom,
-      { isStatic: true },
-    );
-    this.scene.matter.add.gameObject(
-      left,
-      { isStatic: true },
-    );
-    this.scene.matter.add.gameObject(
-      right,
-      { isStatic: true },
-    );
+      if (intervalEnd > intervalStart) {
+        intervals.push({ start: intervalStart, end: intervalEnd });
+      }
+    }
+
+    intervals.sort((a, b) => a.start - b.start);
+    const merged = [];
+
+    for (const interval of intervals) {
+      const last = merged[merged.length - 1];
+      if (last && interval.start <= last.end + 1e-4) {
+        last.end = Math.max(last.end, interval.end);
+      } else {
+        merged.push({ ...interval });
+      }
+    }
+
+    const remaining = [];
+    let cursor = 0;
+
+    for (const interval of merged) {
+      if (interval.start > cursor + 1e-4) {
+        remaining.push({
+          start: {
+            x: start.x + dx * cursor,
+            y: start.y + dy * cursor,
+          },
+          end: {
+            x: start.x + dx * interval.start,
+            y: start.y + dy * interval.start,
+          },
+        });
+      }
+      cursor = Math.max(cursor, interval.end);
+    }
+
+    if (cursor < 1 - 1e-4) {
+      remaining.push({
+        start: { x: start.x + dx * cursor, y: start.y + dy * cursor },
+        end: { ...end },
+      });
+    }
+
+    return remaining;
+  }
+
+  createDiamondWalls() {
+    const room = this.currentRoomData;
+    const points = [
+      { x: room.width / 2, y: 0 },
+      { x: room.width, y: room.height / 2 },
+      { x: room.width / 2, y: room.height },
+      { x: 0, y: room.height / 2 },
+    ];
+    const openings = room.ports
+      .filter(port => port.mode === "vestibule" || port.boundaryOpening)
+      .flatMap(port => getBoundaryOpeningSegments(room, port));
+
+    this.walls = [];
+
+    for (let index = 0; index < points.length; index++) {
+      const start = points[index];
+      const end = points[(index + 1) % points.length];
+
+      this.splitPolygonEdge(start, end, openings).forEach(segment => {
+        this.createStaticWallSegment(segment.start, segment.end, 20, 0x444444);
+      });
+    }
   }
 
   createCircularBoundry() {
@@ -322,46 +445,48 @@ export default class RoomManager {
 
     const angleStep = (Math.PI * 2) / segmentCount;
 
+    const arcOpenings = room.ports
+      .filter(port => port.mode === "vestibule" || port.boundaryOpening)
+      .map(port => getArcOpeningAngles(port))
+      .filter(Boolean);
+
+    const normalizeAngle = angle => ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const isAngleInOpening = angle => arcOpenings.some(opening => {
+      const start = normalizeAngle(opening.startAngle);
+      const end = normalizeAngle(opening.endAngle);
+      const current = normalizeAngle(angle);
+      const span = normalizeAngle(end - start);
+      const offset = normalizeAngle(current - start);
+      return offset <= span + 1e-4;
+    });
+
     for (let i = 0; i < segmentCount; i++) {
       const angle1 = i * angleStep;
       const angle2 = (i + 1) * angleStep;
+      const middleAngle = angle1 + angleStep / 2;
+
+      if (isAngleInOpening(middleAngle)) {
+        continue;
+      }
 
       const x1 = centerX + Math.cos(angle1) * radius;
       const y1 = centerY + Math.sin(angle1) * radius;
-
       const x2 = centerX + Math.cos(angle2) * radius;
       const y2 = centerY + Math.sin(angle2) * radius;
-
       const midpointX = (x1 + x2) / 2;
       const midpointY = (y1 + y2) / 2;
-
-      const segmentLenght = Phaser.Math.Distance.Between(
-        x1,
-        y1,
-        x2,
-        y2,
-      ) + overlap;
+      const segmentLength = Phaser.Math.Distance.Between(x1, y1, x2, y2) + overlap;
+      const tangentAngle = Math.atan2(y2 - y1, x2 - x1);
 
       const wall = this.scene.add.rectangle(
         midpointX,
         midpointY,
-        segmentLenght,
+        segmentLength,
         wallThickness,
-        0x444444,
+        0x444444
       );
-
-      const tangentAngle = Math.atan2(
-        y2 - y1,
-        x2 - x1
-      );
-
-      wall.rotation = tangentAngle;
-
-      this.scene.matter.add.gameObject(
-        wall,
-        { isStatic: true },
-      );
-
+      this.scene.matter.add.gameObject(wall, { isStatic: true });
+      wall.setRotation(tangentAngle);
       this.walls.push(wall);
     }
   }
@@ -373,12 +498,14 @@ export default class RoomManager {
       this.currentRoomId,
       { includeLocked: true }
     );
+    const roomState = this.floor.getRoomState(this.currentRoomId);
 
     for (const exit of exits) {
-      const position = getDoorPosition(
-        this.currentRoomData,
-        exit.direction
-      );
+      const port = this.floor.getPortForExit(this.currentRoomId, exit);
+      if (!port) {
+        console.warn(`No RoomPort found for connection "${exit.connectionId}".`);
+        continue;
+      }
 
       const isOpen = this.isRoomCleared && !exit.locked;
       const color = exit.locked
@@ -387,42 +514,87 @@ export default class RoomManager {
           ? 0x00aa44
           : 0xcc3333;
 
-      const door = this.scene.add.rectangle(
-        position.x,
-        position.y,
-        position.width,
-        position.height,
-        color,
-        1
+      let gateOpen;
+      if (port.gate) {
+        const defaultGateOpen = Boolean(
+          roomState.cleared && port.gate.openWhenRoomCleared
+        ) || Boolean(
+          !roomState.cleared && this.entryDirection === port.direction
+        ) || port.gate.initiallyOpen;
+
+        gateOpen = !roomState.cleared && this.entryDirection === port.direction
+          ? true
+          : roomState.isGateOpen(port.gate.id, defaultGateOpen);
+
+        if (roomState.cleared && port.gate.openWhenRoomCleared) {
+          gateOpen = true;
+          roomState.setGateOpen(port.gate.id, true);
+        }
+      }
+
+      const runtime = new RoomEntranceRuntime(
+        this.scene,
+        this.currentRoomData,
+        port,
+        {
+          exit,
+          gateOpen,
+          doorColor: color,
+        }
       );
 
-      this.scene.matter.add.gameObject(door, {
-        isStatic: true,
-        isSensor: true,
-      });
-
-      door.isDoor = true;
-      door.doorDirection = exit.direction;
-      door.targetRoomId = exit.toRoomId;
-      door.connectionId = exit.connectionId;
-      door.isLocked = exit.locked;
-
-      this.doors.push(door);
+      this.entranceRuntimes.push(runtime);
+      if (runtime.exitTrigger) {
+        this.doors.push(runtime.exitTrigger);
+      }
     }
 
     this.door = this.doors[0] ?? null;
   }
 
   clearDoors() {
-    if (!this.doors) {
-      this.doors = [];
-      this.door = null;
-      return;
+    const runtimeObjects = new Set();
+
+    for (const runtime of this.entranceRuntimes ?? []) {
+      if (runtime.exitTrigger) runtimeObjects.add(runtime.exitTrigger);
+      runtime.destroy();
     }
 
-    this.doors.forEach(door => door.destroy());
+    // Preserve compatibility with any legacy door created outside an entrance runtime.
+    for (const door of this.doors ?? []) {
+      if (!runtimeObjects.has(door) && door?.active) {
+        door.destroy();
+      }
+    }
+
+    if (this.door?.active && !runtimeObjects.has(this.door)) {
+      this.door.destroy();
+    }
+
+    this.entranceRuntimes = [];
     this.doors = [];
     this.door = null;
+  }
+
+  handleGateEntry(portId) {
+    if (this.isRoomCleared || this.scene.isRoomTransitioning) {
+      return false;
+    }
+
+    const runtime = this.entranceRuntimes.find(
+      entrance => entrance.port.id === portId
+    );
+
+    if (!runtime?.closeGateAfterEntry()) {
+      return false;
+    }
+
+    const gateId = runtime.port.gate.id;
+    this.floor
+      .getRoomState(this.currentRoomId)
+      ?.setGateOpen(gateId, false);
+
+    return true;
   }
 
   createRoomBoundary() {
@@ -432,7 +604,11 @@ export default class RoomManager {
       this.createRectangularWalls();
     }
 
-    if (shape === 'circle') {
+    if (shape === "diamond") {
+      this.createDiamondWalls();
+    }
+
+    if (shape === "circle") {
       this.createCircularBoundry();
     }
   }
@@ -471,9 +647,14 @@ export default class RoomManager {
     this.isRoomCleared = true;
     this.isDoorOpen = true;
 
-    this.floor
-      .getRoomState(this.currentRoomId)
-      ?.markCleared();
+    const roomState = this.floor.getRoomState(this.currentRoomId);
+    roomState?.markCleared();
+
+    for (const entrance of this.entranceRuntimes) {
+      if (entrance.openGateAfterRoomClear()) {
+        roomState?.setGateOpen(entrance.port.gate.id, true);
+      }
+    }
 
     if (this.currentRoomData.type === "combat") {
       this.spawnReward();

@@ -1,5 +1,6 @@
 import RoomDefinition from "./RoomDefinition.js";
 import RoomState from "./RoomState.js";
+import RoomPort from "./RoomPort.js";
 
 const DIRECTIONS = new Set(["north", "east", "south", "west"]);
 const OPPOSITE_DIRECTION = {
@@ -122,6 +123,8 @@ export default class FloorModel {
       this.addConnection(connection);
     }
 
+    this.ensurePortsForConnections();
+
     this.startRoomId = startRoomId ?? (
       [...this.rooms.values()].find(room => room.isStartRoom)?.id ??
       [...this.rooms.keys()][0]
@@ -242,6 +245,104 @@ export default class FloorModel {
 
     this.connections.push(connection);
     return connection;
+  }
+
+  ensurePortsForConnections() {
+    for (const connection of this.connections) {
+      const roomA = this.getRoomDefinition(connection.roomAId);
+      const roomB = this.getRoomDefinition(connection.roomBId);
+      const reverseDirection = OPPOSITE_DIRECTION[connection.directionFromA];
+
+      if (!roomA.getPortForConnection(connection.id)) {
+        roomA.addPort(new RoomPort({
+          id: `${roomA.id}:${connection.id}`,
+          connectionId: connection.id,
+          direction: connection.directionFromA,
+          mode: "direct",
+        }));
+      }
+
+      if (!roomB.getPortForConnection(connection.id)) {
+        roomB.addPort(new RoomPort({
+          id: `${roomB.id}:${connection.id}`,
+          connectionId: connection.id,
+          direction: reverseDirection,
+          mode: "direct",
+        }));
+      }
+
+      const portA = roomA.getPortForConnection(connection.id);
+      const portB = roomB.getPortForConnection(connection.id);
+
+      if (portA.direction !== connection.directionFromA) {
+        throw new Error(
+          `RoomPort "${portA.id}" direction does not match connection "${connection.id}".`
+        );
+      }
+
+      if (portB.direction !== reverseDirection) {
+        throw new Error(
+          `RoomPort "${portB.id}" direction does not match the reverse of connection "${connection.id}".`
+        );
+      }
+    }
+
+    for (const room of this.rooms.values()) {
+      for (const port of room.ports) {
+        if (port.connectionId && !this.connections.some(
+          connection => connection.id === port.connectionId &&
+            (connection.roomAId === room.id || connection.roomBId === room.id)
+        )) {
+          throw new Error(
+            `RoomPort "${port.id}" references an unknown connection "${port.connectionId}".`
+          );
+        }
+      }
+    }
+  }
+
+  getPortForExit(roomId, exitOrConnectionId) {
+    const room = this.getRoomDefinition(roomId);
+    if (!room) return null;
+
+    const connectionId = typeof exitOrConnectionId === "string"
+      ? exitOrConnectionId
+      : exitOrConnectionId?.connectionId;
+
+    if (connectionId) {
+      return room.getPortForConnection(connectionId);
+    }
+
+    const direction = exitOrConnectionId?.direction;
+    return room.ports.find(port => port.direction === direction) ?? null;
+  }
+
+  setRoomPort(roomId, inputPort) {
+    const room = this.getRoomDefinition(roomId);
+    if (!room) {
+      throw new Error(`Cannot set a port on unknown room "${roomId}".`);
+    }
+
+    const port = room.setPort(inputPort);
+    if (port.connectionId) {
+      const exit = this.getExits(roomId, { includeLocked: true }).find(
+        item => item.connectionId === port.connectionId
+      );
+
+      if (!exit) {
+        throw new Error(
+          `RoomPort "${port.id}" references a connection that does not leave room "${roomId}".`
+        );
+      }
+
+      if (exit.direction !== port.direction) {
+        throw new Error(
+          `RoomPort "${port.id}" direction must be "${exit.direction}" for this connection.`
+        );
+      }
+    }
+
+    return port;
   }
 
   getRoomDefinition(roomId) {

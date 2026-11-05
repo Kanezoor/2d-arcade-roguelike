@@ -1,3 +1,5 @@
+import RoomPort from "./RoomPort.js";
+
 const ROOM_TYPES = new Set([
   "start",
   "combat",
@@ -50,6 +52,7 @@ export default class RoomDefinition {
     isStartRoom = false,
     isBossRoom = false,
     initiallyLocked = false,
+    ports = [],
   } = {}) {
     if (typeof id !== "string" || id.trim() === "") {
       throw new TypeError("RoomDefinition requires a non-empty string id.");
@@ -125,6 +128,71 @@ export default class RoomDefinition {
     this.isStartRoom = Boolean(isStartRoom);
     this.isBossRoom = Boolean(isBossRoom || type === "boss");
     this.initiallyLocked = Boolean(initiallyLocked);
+
+    if (!Array.isArray(ports)) {
+      throw new TypeError(`Room "${id}" ports must be an array.`);
+    }
+
+    this.ports = [];
+    for (const inputPort of ports) {
+      this.addPort(inputPort);
+    }
+  }
+
+  addPort(inputPort) {
+    const port = inputPort instanceof RoomPort
+      ? inputPort
+      : new RoomPort(inputPort);
+
+    if (this.ports.some(existing => existing.id === port.id)) {
+      throw new Error(`Duplicate room port id "${port.id}" in room "${this.id}".`);
+    }
+
+    if (
+      port.connectionId &&
+      this.ports.some(existing => existing.connectionId === port.connectionId)
+    ) {
+      throw new Error(
+        `Connection "${port.connectionId}" already has a port in room "${this.id}".`
+      );
+    }
+
+    this.ports.push(port);
+    return port;
+  }
+
+  setPort(inputPort) {
+    const port = inputPort instanceof RoomPort
+      ? inputPort
+      : new RoomPort(inputPort);
+
+    const existingIndex = this.ports.findIndex(existing => (
+      existing.id === port.id ||
+      (port.connectionId && existing.connectionId === port.connectionId)
+    ));
+
+    const duplicate = this.ports.find((existing, index) => (
+      index !== existingIndex && (
+        existing.id === port.id ||
+        (port.connectionId && existing.connectionId === port.connectionId)
+      )
+    ));
+
+    if (duplicate) {
+      throw new Error(`RoomPort "${port.id}" conflicts with another port in room "${this.id}".`);
+    }
+
+    if (existingIndex === -1) {
+      this.ports.push(port);
+    } else {
+      this.ports[existingIndex] = port;
+    }
+
+    return port;
+  }
+
+  getPortForConnection(connectionId) {
+    return this.ports.find(port => port.connectionId === connectionId) ?? null;
   }
 
   toJSON() {
@@ -142,6 +210,7 @@ export default class RoomDefinition {
       isStartRoom: this.isStartRoom,
       isBossRoom: this.isBossRoom,
       initiallyLocked: this.initiallyLocked,
+      ports: this.ports.map(port => port.toJSON()),
     };
   }
 }

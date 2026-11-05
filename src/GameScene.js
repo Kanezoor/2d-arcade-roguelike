@@ -313,6 +313,22 @@ export class GameScene extends Phaser.Scene {
 
     if (
       objectA === this.player.sprite &&
+      objectB.isRoomGateEntry
+    ) {
+      this.roomManager.handleGateEntry(objectB.portId);
+      return;
+    }
+
+    if (
+      objectB === this.player.sprite &&
+      objectA.isRoomGateEntry
+    ) {
+      this.roomManager.handleGateEntry(objectA.portId);
+      return;
+    }
+
+    if (
+      objectA === this.player.sprite &&
       objectB.isDoor
     ) {
       this.roomManager.enterDoor(objectB.doorDirection);

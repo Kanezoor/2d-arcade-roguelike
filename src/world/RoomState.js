@@ -35,6 +35,10 @@ export default class RoomState {
     this.collectedRewardIds = Array.isArray(snapshot.collectedRewardIds)
       ? [...snapshot.collectedRewardIds]
       : [];
+    this.gateStates = snapshot.gateStates && typeof snapshot.gateStates === "object"
+      && !Array.isArray(snapshot.gateStates)
+      ? cloneSerializable(snapshot.gateStates)
+      : {};
     this.customData = snapshot.customData && typeof snapshot.customData === "object"
       ? cloneSerializable(snapshot.customData)
       : {};
@@ -95,6 +99,25 @@ export default class RoomState {
     return true;
   }
 
+  hasGateState(gateId) {
+    return Object.prototype.hasOwnProperty.call(this.gateStates, gateId);
+  }
+
+  isGateOpen(gateId, fallback = false) {
+    return this.hasGateState(gateId)
+      ? Boolean(this.gateStates[gateId])
+      : Boolean(fallback);
+  }
+
+  setGateOpen(gateId, isOpen) {
+    if (typeof gateId !== "string" || gateId.trim() === "") {
+      throw new TypeError("Gate state requires a non-empty gateId.");
+    }
+
+    this.gateStates[gateId] = Boolean(isOpen);
+    return true;
+  }
+
   recordCollectedReward(rewardId) {
     if (rewardId == null || this.collectedRewardIds.includes(rewardId)) {
       return false;
@@ -115,6 +138,7 @@ export default class RoomState {
       droppedItems: cloneSerializable(this.droppedItems),
       collectedItemIds: [...this.collectedItemIds],
       collectedRewardIds: [...this.collectedRewardIds],
+      gateStates: cloneSerializable(this.gateStates),
       customData: cloneSerializable(this.customData),
     };
   }
