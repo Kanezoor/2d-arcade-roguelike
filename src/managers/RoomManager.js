@@ -15,8 +15,15 @@ import {
   getBoundaryOpeningSegments,
   getRectangularEdgeOpenings,
   getRoomEntrySpawnPosition,
+  buildRoomEntranceGeometry,
 } from "../world/RoomEntranceGeometry.js";
+import { getRoomOutlinePoints } from "../world/RoomGeometry.js";
 import RoomTransitionController from "../world/RoomTransitionController.js";
+import { configureDiamondVestibulePrototype } from "../world/DiamondVestibulePrototype.js";
+
+// Temporary development fixture. Disable once irregular room shapes are
+// assigned by the procedural generator.
+const ENABLE_DIAMOND_VESTIBULE_PROTOTYPE = true;
 
 export default class RoomManager {
   constructor(scene) {
@@ -62,6 +69,19 @@ export default class RoomManager {
       seed: null, // null creates a new random seed for each run.
     });
 
+    this.diamondVestibulePrototype = ENABLE_DIAMOND_VESTIBULE_PROTOTYPE
+      ? configureDiamondVestibulePrototype(this.floor)
+      : null;
+
+    if (this.diamondVestibulePrototype) {
+      console.info(
+        "Diamond vestibule prototype configured:",
+        this.diamondVestibulePrototype
+      );
+    } else if (ENABLE_DIAMOND_VESTIBULE_PROTOTYPE) {
+      console.warn("No leaf room was available for the diamond vestibule prototype.");
+    }
+
     this.runState = new RunState({
       seed: this.floor.seed,
       floors: [this.floor],
@@ -95,6 +115,8 @@ export default class RoomManager {
     this.isBossRoom = false
     this.isRoomCleared = false;
     this.isDoorOpen = false;
+    this.isEncounterActive = true;
+    this.roomFloorGraphics = null;
   }
 
   start() {
@@ -161,6 +183,7 @@ export default class RoomManager {
     // Remove runtime objects belonging to the previous room.
     this.clearDoors();
     this.clearRoomWalls();
+    this.clearRoomFloor();
     this.clearRewards();
     this.scene.enemies?.clear(true, true);
     this.scene.projectiles?.clear(true, true);
@@ -172,21 +195,24 @@ export default class RoomManager {
     this.runState.setCurrentLocation(this.floor.id, room.id);
 
     const roomState = this.floor.getRoomState(room.id);
+    const entryPort = entryDirection
+      ? room.ports.find(port => (
+          port.direction === entryDirection && port.mode === "vestibule"
+        ))
+      : null;
 
+    this.isEncounterActive = roomState.cleared || !entryPort?.gate?.closeOnEntry;
     this.isRoomCleared = roomState.cleared;
     this.isDoorOpen = roomState.cleared;
     this.isBossRoom = room.isBossRoom || room.type === "boss";
     this.isTransitioning = false;
     this.isEnteringDoor = false;
 
-    this.scene.cameras.main.setBackgroundColor(room.background);
+    this.scene.cameras.main.setBackgroundColor(room.outsideBackground ?? 0x171923);
+    this.createRoomFloor();
     this.createRoomBoundary();
 
     if (entryDirection) {
-      const entryPort = room.ports.find(port => (
-        port.direction === entryDirection && port.mode === "vestibule"
-      ));
-
       const entryPosition = entryPort
         ? getRoomEntrySpawnPosition(room, entryPort)
         : getRoomEntryPosition(room, entryDirection);
@@ -407,12 +433,14 @@ export default class RoomManager {
 
   createDiamondWalls() {
     const room = this.currentRoomData;
-    const points = [
-      { x: room.width / 2, y: 0 },
-      { x: room.width, y: room.height / 2 },
-      { x: room.width / 2, y: room.height },
-      { x: 0, y: room.height / 2 },
-    ];
+    const points = room.outlinePoints?.length >= 3
+      ? room.outlinePoints.map(point => ({ ...point }))
+      : [
+          { x: room.width / 2, y: 0 },
+          { x: room.width, y: room.height / 2 },
+          { x: room.width / 2, y: room.height },
+          { x: 0, y: room.height / 2 },
+        ];
     const openings = room.ports
       .filter(port => port.mode === "vestibule" || port.boundaryOpening)
       .flatMap(port => getBoundaryOpeningSegments(room, port));
@@ -540,6 +568,7 @@ export default class RoomManager {
           exit,
           gateOpen,
           doorColor: color,
+          exitAvailable: this.isRoomCleared && !exit.locked,
         }
       );
 
@@ -594,7 +623,55 @@ export default class RoomManager {
       .getRoomState(this.currentRoomId)
       ?.setGateOpen(gateId, false);
 
+    this.isEncounterActive = true;
     return true;
+  }
+
+  createRoomFloor() {
+    const room = this.currentRoomData;
+    if (!room) return;
+
+    const graphics = this.scene.add.graphics();
+    graphics.setDepth(-1000);
+    graphics.fillStyle(room.background ?? 0xffffff, 1);
+
+    if (room.shape === "rectangle" || room.shape === "square") {
+      graphics.fillRect(0, 0, room.width, room.height);
+    } else {
+      const outline = getRoomOutlinePoints(room);
+      graphics.beginPath();
+      graphics.moveTo(outline[0].x, outline[0].y);
+      outline.slice(1).forEach(point => graphics.lineTo(point.x, point.y));
+      graphics.closePath();
+      graphics.fillPath();
+    }
+
+    // A vestibule is a second walkable polygon attached to the room outline.
+    for (const port of room.ports) {
+      if (port.mode !== "vestibule" || !port.vestibule) continue;
+      const geometry = buildRoomEntranceGeometry(room, port);
+      const walls = geometry.vestibuleWalls;
+      if (walls.length < 2) continue;
+
+      const points = [
+        walls[0].start,
+        walls[1].start,
+        walls[1].end,
+        walls[0].end,
+      ];
+      graphics.beginPath();
+      graphics.moveTo(points[0].x, points[0].y);
+      points.slice(1).forEach(point => graphics.lineTo(point.x, point.y));
+      graphics.closePath();
+      graphics.fillPath();
+    }
+
+    this.roomFloorGraphics = graphics;
+  }
+
+  clearRoomFloor() {
+    this.roomFloorGraphics?.destroy();
+    this.roomFloorGraphics = null;
   }
 
   createRoomBoundary() {
@@ -650,10 +727,13 @@ export default class RoomManager {
     const roomState = this.floor.getRoomState(this.currentRoomId);
     roomState?.markCleared();
 
+    this.isEncounterActive = false;
+
     for (const entrance of this.entranceRuntimes) {
       if (entrance.openGateAfterRoomClear()) {
         roomState?.setGateOpen(entrance.port.gate.id, true);
       }
+      entrance.openExitAfterRoomClear();
     }
 
     if (this.currentRoomData.type === "combat") {

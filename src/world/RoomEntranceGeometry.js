@@ -156,6 +156,17 @@ export function getVestibuleWallSegments(room, inputPort) {
   ];
 }
 
+/** Returns the outer vestibule threshold, joining the two side-wall endpoints. */
+export function getVestibuleOuterBarrierSegment(room, inputPort) {
+  const walls = getVestibuleWallSegments(room, inputPort);
+  if (walls.length < 2) return null;
+
+  return {
+    start: { ...walls[0].end },
+    end: { ...walls[1].end },
+  };
+}
+
 export function getExitTriggerGeometry(room, inputPort) {
   const { port, anchor, normal, tangent } = resolveRoomPortFrame(room, inputPort);
 
@@ -202,6 +213,7 @@ export function getRoomEntrySpawnPosition(room, inputPort) {
 export function buildRoomEntranceGeometry(room, inputPort) {
   const { port } = resolveRoomPortFrame(room, inputPort);
   const vestibuleWalls = getVestibuleWallSegments(room, port);
+  const outerBarrier = getVestibuleOuterBarrierSegment(room, port);
   const gateSegments = getGateSegments(room, port);
   const boundaryOpeningSegments = getBoundaryOpeningSegments(room, port);
   const exitTrigger = getExitTriggerGeometry(room, port);
@@ -209,6 +221,7 @@ export function buildRoomEntranceGeometry(room, inputPort) {
   return {
     port,
     vestibuleWalls,
+    outerBarrier,
     gateSegments,
     boundaryOpeningSegments,
     exitTrigger,

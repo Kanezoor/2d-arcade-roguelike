@@ -22,6 +22,7 @@ export default class RoomEntranceRuntime {
     exit,
     gateOpen = undefined,
     doorColor = 0xcc3333,
+    exitAvailable = false,
     createEntrySensor = true,
   } = {}) {
     if (!scene?.add || !scene?.matter?.add) {
@@ -35,10 +36,14 @@ export default class RoomEntranceRuntime {
     this.vestibuleWalls = [];
     this.gatePanels = [];
     this.exitTrigger = null;
+    this.outerExitBarrier = null;
     this.entrySensor = null;
+    this.isPermanentlyLocked = Boolean(exit?.locked);
+    this.exitAvailable = Boolean(exitAvailable && !this.isPermanentlyLocked);
     this.isDestroyed = false;
 
     this.createVestibuleWalls();
+    this.createOuterExitBarrier();
     this.createGatePanels();
 
     if (this.port.gate) {
@@ -85,6 +90,44 @@ export default class RoomEntranceRuntime {
       wall.portId = this.port.id;
       this.vestibuleWalls.push(wall);
     });
+  }
+
+  createOuterExitBarrier() {
+    const segment = this.geometry.outerBarrier;
+    const vestibule = this.port.vestibule;
+    if (!segment || !vestibule) return;
+
+    this.outerExitBarrier = this.createStaticSegment(
+      segment,
+      vestibule.wallThickness,
+      0x777777,
+      this.exitAvailable ? 0.12 : 1
+    );
+    this.outerExitBarrier.isOuterExitBarrier = true;
+    this.outerExitBarrier.portId = this.port.id;
+    if (this.outerExitBarrier.body) {
+      this.outerExitBarrier.body.isSensor = this.exitAvailable;
+    }
+  }
+
+  setExitAvailable(isAvailable) {
+    this.exitAvailable = Boolean(isAvailable);
+    if (this.outerExitBarrier?.active) {
+      if (this.outerExitBarrier.body) {
+        this.outerExitBarrier.body.isSensor = this.exitAvailable;
+      }
+      this.outerExitBarrier.setAlpha(this.exitAvailable ? 0.12 : 1);
+    }
+    if (this.exitTrigger) {
+      this.exitTrigger.isLocked = this.isPermanentlyLocked || !this.exitAvailable;
+      this.exitTrigger.setFillStyle(this.exitAvailable ? 0x00aa44 : 0xcc3333);
+    }
+    return this.exitAvailable;
+  }
+
+  openExitAfterRoomClear() {
+    if (this.isPermanentlyLocked) return false;
+    return this.setExitAvailable(true);
   }
 
   createGatePanels() {
@@ -145,7 +188,7 @@ export default class RoomEntranceRuntime {
     this.exitTrigger.targetRoomId = exit.toRoomId;
     this.exitTrigger.connectionId = exit.connectionId;
     this.exitTrigger.portId = this.port.id;
-    this.exitTrigger.isLocked = Boolean(exit.locked);
+    this.exitTrigger.isLocked = Boolean(exit.locked) || !this.exitAvailable;
   }
 
   setGateOpen(isOpen) {
@@ -191,11 +234,13 @@ export default class RoomEntranceRuntime {
 
     this.entrySensor?.destroy();
     this.exitTrigger?.destroy();
+    this.outerExitBarrier?.destroy();
     this.vestibuleWalls.forEach(object => object.destroy());
     this.gatePanels.forEach(object => object.destroy());
 
     this.entrySensor = null;
     this.exitTrigger = null;
+    this.outerExitBarrier = null;
     this.vestibuleWalls = [];
     this.gatePanels = [];
   }

@@ -2,6 +2,7 @@ import Enemy from "../entities/Enemy.js";
 import DamageSystem from "../combat/DamageSystem.js";
 import DamageContext from "../combat/DamageContext.js";
 import DamageType from "../combat/DamageType.js";
+import { isPointInsideRoom } from "../world/RoomGeometry.js";
 
 
 export function createEnemies(scene) {
@@ -18,11 +19,28 @@ export function spawnEnemy(scene, enemyType = null) {
   let dist = 0;
   const safeRadius = 250;
 
+  let attempts = 0;
+
   do {
     rx = Phaser.Math.Between(50, room.width - 50);
     ry = Phaser.Math.Between(50, room.height - 50);
-    dist = Phaser.Math.Distance.Between(scene.player.sprite.x, scene.player.sprite.y, rx, ry);
-  } while (dist < safeRadius);
+    dist = Phaser.Math.Distance.Between(
+      scene.player.sprite.x,
+      scene.player.sprite.y,
+      rx,
+      ry
+    );
+    attempts += 1;
+  } while (
+    (dist < safeRadius || !isPointInsideRoom(room, rx, ry, 36)) &&
+    attempts < 500
+  );
+
+  // Keep a safe fallback for unusually small/custom room geometries.
+  if (!isPointInsideRoom(room, rx, ry, 20)) {
+    rx = room.width / 2;
+    ry = room.height / 2;
+  }
 
   const isBrute = enemyType === 'brute';
   const isRanged = enemyType === 'ranged';
@@ -130,6 +148,13 @@ export function spawnEnemy(scene, enemyType = null) {
 }
 
 export function updateEnemies(scene) {
+
+  // Enemies in a vestibule encounter remain dormant until the player crosses
+  // the inner threshold. Keep their physics bodies stationary while dormant.
+  if (scene.roomManager && !scene.roomManager.isEncounterActive) {
+    scene.enemies.getChildren().forEach(sprite => sprite.setVelocity(0, 0));
+    return;
+  }
 
   scene.enemies.getChildren().forEach(sprite => {
 

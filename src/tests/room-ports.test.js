@@ -11,6 +11,7 @@ import {
   getRectangularEdgeOpenings,
   getRoomEntrySpawnPosition,
   getVestibuleWallSegments,
+  getVestibuleOuterBarrierSegment,
 } from "../world/RoomEntranceGeometry.js";
 
 function closeTo(actual, expected, epsilon = 1e-6) {
@@ -73,6 +74,11 @@ const northVestibule = new RoomPort({
 
 const northGeometry = buildRoomEntranceGeometry(room, northVestibule);
 assert.equal(northGeometry.vestibuleWalls.length, 2);
+assert.ok(northGeometry.outerBarrier);
+assert.deepEqual(
+  northGeometry.outerBarrier,
+  getVestibuleOuterBarrierSegment(room, northVestibule)
+);
 assert.equal(northGeometry.gateSegments.length, 1);
 assert.ok(northGeometry.entrySensor);
 assert.ok(northGeometry.entrySpawn);
@@ -264,6 +270,7 @@ function createFakeScene() {
             return this;
           },
           setAlpha(value) { this.alpha = value; return this; },
+          setFillStyle(value) { this.color = value; return this; },
           destroy() { this.active = false; this.destroyed = true; },
         };
         objects.push(object);
@@ -298,6 +305,8 @@ const runtime = new RoomEntranceRuntime(fakeScene, room, northVestibule, {
   gateOpen: true,
 });
 assert.equal(runtime.vestibuleWalls.length, 2);
+assert.ok(runtime.outerExitBarrier);
+assert.equal(runtime.outerExitBarrier.body.isSensor, false);
 assert.equal(runtime.gatePanels.length, 1);
 assert.equal(runtime.exitTrigger.isDoor, true);
 assert.equal(runtime.entrySensor.isRoomGateEntry, true);
@@ -307,6 +316,8 @@ assert.equal(runtime.gatePanels[0].body.isSensor, false);
 assert.equal(runtime.entrySensor, null);
 assert.equal(runtime.openGateAfterRoomClear(), true);
 assert.equal(runtime.gatePanels[0].body.isSensor, true);
+assert.equal(runtime.openExitAfterRoomClear(), true);
+assert.equal(runtime.outerExitBarrier.body.isSensor, true);
 runtime.destroy();
 assert.ok(fakeScene.objects.every(object => object.destroyed));
 
@@ -346,6 +357,20 @@ for (const panel of eastRuntime.gatePanels) {
   closeTo(panel.body.angle, panel.rotation);
 }
 eastRuntime.destroy();
+
+const lockedRuntime = new RoomEntranceRuntime(fakeScene, room, eastVestibule, {
+  exit: {
+    direction: "east",
+    toRoomId: "neighbor-room",
+    connectionId: "east-connection",
+    locked: true,
+  },
+  exitAvailable: true,
+});
+assert.equal(lockedRuntime.outerExitBarrier.body.isSensor, false);
+assert.equal(lockedRuntime.openExitAfterRoomClear(), false);
+assert.equal(lockedRuntime.outerExitBarrier.body.isSensor, false);
+lockedRuntime.destroy();
 
 assert.throws(() => new RoomPort({
   id: "invalid-normal",

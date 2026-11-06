@@ -47,12 +47,14 @@ export default class RoomDefinition {
     width = 800,
     height = 800,
     background = 0xffffff,
+    outsideBackground = 0x171923,
     enemies = [],
     cameraMode,
     isStartRoom = false,
     isBossRoom = false,
     initiallyLocked = false,
     ports = [],
+    outlinePoints = null,
   } = {}) {
     if (typeof id !== "string" || id.trim() === "") {
       throw new TypeError("RoomDefinition requires a non-empty string id.");
@@ -123,11 +125,29 @@ export default class RoomDefinition {
     this.width = width;
     this.height = height;
     this.background = background;
+    this.outsideBackground = outsideBackground;
     this.enemies = cloneSerializable(enemies);
     this.cameraMode = resolvedCameraMode;
     this.isStartRoom = Boolean(isStartRoom);
     this.isBossRoom = Boolean(isBossRoom || type === "boss");
     this.initiallyLocked = Boolean(initiallyLocked);
+
+    if (outlinePoints !== null && (
+      !Array.isArray(outlinePoints) ||
+      outlinePoints.length < 3 ||
+      outlinePoints.some(point => (
+        !point || !Number.isFinite(point.x) || !Number.isFinite(point.y) ||
+        point.x < 0 || point.x > width || point.y < 0 || point.y > height
+      ))
+    )) {
+      throw new TypeError(
+        `Room "${id}" outlinePoints must contain at least three finite points inside the room bounds.`
+      );
+    }
+
+    this.outlinePoints = outlinePoints === null
+      ? null
+      : outlinePoints.map(point => ({ x: point.x, y: point.y }));
 
     if (!Array.isArray(ports)) {
       throw new TypeError(`Room "${id}" ports must be an array.`);
@@ -205,11 +225,13 @@ export default class RoomDefinition {
       width: this.width,
       height: this.height,
       background: this.background,
+      outsideBackground: this.outsideBackground,
       enemies: cloneSerializable(this.enemies),
       cameraMode: this.cameraMode,
       isStartRoom: this.isStartRoom,
       isBossRoom: this.isBossRoom,
       initiallyLocked: this.initiallyLocked,
+      outlinePoints: this.outlinePoints?.map(point => ({ ...point })) ?? null,
       ports: this.ports.map(port => port.toJSON()),
     };
   }
