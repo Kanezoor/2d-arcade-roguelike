@@ -1,4 +1,5 @@
 import RoomPort from "./RoomPort.js";
+import { getRoomOutlinePoints } from "./RoomGeometry.js";
 
 const DIRECTION_NORMALS = Object.freeze({
   north: { x: 0, y: -1 },
@@ -22,6 +23,36 @@ function add(a, b) {
 
 function scale(vector, amount) {
   return { x: vector.x * amount, y: vector.y * amount };
+}
+
+/** Find where a cardinal ray from the room centre exits the template outline. */
+export function deriveRoomPortAnchor(room, direction) {
+  const ray = DIRECTION_NORMALS[direction];
+  if (!ray) throw new TypeError(`Unsupported room port direction "${direction}".`);
+  const outline = getRoomOutlinePoints(room);
+  const origin = { x: room.width / 2, y: room.height / 2 };
+  let best = null;
+  const twiceArea = outline.reduce((sum, point, i) => {
+    const next = outline[(i + 1) % outline.length];
+    return sum + point.x * next.y - next.x * point.y;
+  }, 0);
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i], b = outline[(i + 1) % outline.length];
+    const edge = { x: b.x - a.x, y: b.y - a.y };
+    const denominator = ray.x * edge.y - ray.y * edge.x;
+    if (Math.abs(denominator) < 1e-9) continue;
+    const offset = { x: a.x - origin.x, y: a.y - origin.y };
+    const t = (offset.x * edge.y - offset.y * edge.x) / denominator;
+    const u = (offset.x * ray.y - offset.y * ray.x) / denominator;
+    if (t < 0 || u < -1e-8 || u > 1 + 1e-8) continue;
+    if (!best || t < best.t) {
+      const orientation = twiceArea >= 0 ? 1 : -1;
+      const normal = normalize({ x: orientation * edge.y, y: -orientation * edge.x });
+      best = { t, anchor: add(origin, scale(ray, t)), normal };
+    }
+  }
+  if (!best) throw new Error(`Could not derive ${direction} port for room template.`);
+  return { anchor: best.anchor, outwardNormal: best.normal };
 }
 
 function toSegments(geometry) {
@@ -79,14 +110,9 @@ export function resolveRoomPortFrame(room, inputPort) {
   const port = inputPort instanceof RoomPort ? inputPort : new RoomPort(inputPort);
   const directionNormal = DIRECTION_NORMALS[port.direction];
 
-  const anchor = port.anchor ?? {
-    north: { x: room.width / 2, y: 0 },
-    east: { x: room.width, y: room.height / 2 },
-    south: { x: room.width / 2, y: room.height },
-    west: { x: 0, y: room.height / 2 },
-  }[port.direction];
-
-  const normal = normalize(port.outwardNormal ?? directionNormal);
+  const derived = !port.anchor ? deriveRoomPortAnchor(room, port.direction) : null;
+  const anchor = port.anchor ?? derived.anchor;
+  const normal = normalize(port.outwardNormal ?? derived?.outwardNormal ?? directionNormal);
   const tangent = { x: -normal.y, y: normal.x };
 
   return {
@@ -206,6 +232,20 @@ export function getRoomEntrySpawnPosition(room, inputPort) {
   return {
     x: trigger.x - normal.x * inwardOffset,
     y: trigger.y - normal.y * inwardOffset,
+  };
+}
+
+/** Place a player just inside the correct template boundary for any port type. */
+export function getRoomInteriorEntrySpawnPosition(room, inputPort) {
+  const { port, anchor, normal } = resolveRoomPortFrame(room, inputPort);
+  if (port.mode === "vestibule") {
+    return getRoomEntrySpawnPosition(room, port);
+  }
+
+  const inwardOffset = Math.max(82, port.triggerInset + port.triggerDepth / 2 + 10);
+  return {
+    x: anchor.x - normal.x * inwardOffset,
+    y: anchor.y - normal.y * inwardOffset,
   };
 }
 

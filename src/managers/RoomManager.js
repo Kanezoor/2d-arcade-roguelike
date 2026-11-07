@@ -14,16 +14,12 @@ import {
   getArcOpeningAngles,
   getBoundaryOpeningSegments,
   getRectangularEdgeOpenings,
-  getRoomEntrySpawnPosition,
+  getRoomInteriorEntrySpawnPosition,
   buildRoomEntranceGeometry,
 } from "../world/RoomEntranceGeometry.js";
 import { getRoomOutlinePoints } from "../world/RoomGeometry.js";
+import { assertValidRoomPortLayout } from "../world/RoomPortLayoutValidator.js";
 import RoomTransitionController from "../world/RoomTransitionController.js";
-import { configureDiamondVestibulePrototype } from "../world/DiamondVestibulePrototype.js";
-
-// Temporary development fixture. Disable once irregular room shapes are
-// assigned by the procedural generator.
-const ENABLE_DIAMOND_VESTIBULE_PROTOTYPE = true;
 
 export default class RoomManager {
   constructor(scene) {
@@ -46,7 +42,16 @@ export default class RoomManager {
         gridHeight: 7,
         roomWidth: 800,
         roomHeight: 800,
+        // Weights are relative probabilities, not percentages. A zero weight
+        // can be used to disable a template without removing it from the registry.
         roomShape: "rectangle",
+        roomTemplateWeights: {
+          rectangle: 5,
+          square: 3,
+          octagon: 2,
+          diamond: 2,
+          circle: 1,
+        },
         background: 0xffffff,
       },
       variants: [
@@ -64,23 +69,10 @@ export default class RoomManager {
       id: "floor-instance-001",
       archetypeId: this.floorArchetype.id,
       variantId: initialVariantId,
-      generationVersion: 1,
+      generationVersion: 2,
       depth: 1,
       seed: null, // null creates a new random seed for each run.
     });
-
-    this.diamondVestibulePrototype = ENABLE_DIAMOND_VESTIBULE_PROTOTYPE
-      ? configureDiamondVestibulePrototype(this.floor)
-      : null;
-
-    if (this.diamondVestibulePrototype) {
-      console.info(
-        "Diamond vestibule prototype configured:",
-        this.diamondVestibulePrototype
-      );
-    } else if (ENABLE_DIAMOND_VESTIBULE_PROTOTYPE) {
-      console.warn("No leaf room was available for the diamond vestibule prototype.");
-    }
 
     this.runState = new RunState({
       seed: this.floor.seed,
@@ -180,6 +172,10 @@ export default class RoomManager {
       return false;
     }
 
+    // Reject invalid entrance layouts before tearing down the current room.
+    // This keeps a bad template/port configuration from producing broken walls.
+    assertValidRoomPortLayout(room);
+
     // Remove runtime objects belonging to the previous room.
     this.clearDoors();
     this.clearRoomWalls();
@@ -196,9 +192,7 @@ export default class RoomManager {
 
     const roomState = this.floor.getRoomState(room.id);
     const entryPort = entryDirection
-      ? room.ports.find(port => (
-          port.direction === entryDirection && port.mode === "vestibule"
-        ))
+      ? room.ports.find(port => port.direction === entryDirection) ?? null
       : null;
 
     this.isEncounterActive = roomState.cleared || !entryPort?.gate?.closeOnEntry;
@@ -214,7 +208,7 @@ export default class RoomManager {
 
     if (entryDirection) {
       const entryPosition = entryPort
-        ? getRoomEntrySpawnPosition(room, entryPort)
+        ? getRoomInteriorEntrySpawnPosition(room, entryPort)
         : getRoomEntryPosition(room, entryDirection);
 
       this.scene.player.sprite.setPosition(
@@ -224,12 +218,12 @@ export default class RoomManager {
       this.scene.player.sprite.setVelocity(0, 0);
     }
 
+    this.createExitDoors();
+
     if (this.isBossRoom) {
       this.startBossRoom();
       return true;
     }
-
-    this.createExitDoors();
 
     if (roomState.cleared) {
       this.doors.forEach(door => {
@@ -431,16 +425,9 @@ export default class RoomManager {
     return remaining;
   }
 
-  createDiamondWalls() {
+  createPolygonWalls() {
     const room = this.currentRoomData;
-    const points = room.outlinePoints?.length >= 3
-      ? room.outlinePoints.map(point => ({ ...point }))
-      : [
-          { x: room.width / 2, y: 0 },
-          { x: room.width, y: room.height / 2 },
-          { x: room.width / 2, y: room.height },
-          { x: 0, y: room.height / 2 },
-        ];
+    const points = getRoomOutlinePoints(room);
     const openings = room.ports
       .filter(port => port.mode === "vestibule" || port.boundaryOpening)
       .flatMap(port => getBoundaryOpeningSegments(room, port));
@@ -635,7 +622,7 @@ export default class RoomManager {
     graphics.setDepth(-1000);
     graphics.fillStyle(room.background ?? 0xffffff, 1);
 
-    if (room.shape === "rectangle" || room.shape === "square") {
+    if (room.shape === "rectangle") {
       graphics.fillRect(0, 0, room.width, room.height);
     } else {
       const outline = getRoomOutlinePoints(room);
@@ -677,12 +664,10 @@ export default class RoomManager {
   createRoomBoundary() {
     const shape = this.currentRoomData.shape;
 
-    if (shape === "rectangle" || shape === "square") {
+    if (shape === "rectangle" || (shape === "square" && Math.abs(this.currentRoomData.width - this.currentRoomData.height) < 1e-6)) {
       this.createRectangularWalls();
-    }
-
-    if (shape === "diamond") {
-      this.createDiamondWalls();
+    } else if (shape === "square" || (shape !== "rectangle" && shape !== "circle")) {
+      this.createPolygonWalls();
     }
 
     if (shape === "circle") {

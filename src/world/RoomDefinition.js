@@ -1,4 +1,6 @@
 import RoomPort from "./RoomPort.js";
+import { validateRoomPortLayout, assertValidRoomPortLayout } from "./RoomPortLayoutValidator.js";
+import { hasRoomTemplate, getRoomTemplate } from "./RoomTemplateRegistry.js";
 
 const ROOM_TYPES = new Set([
   "start",
@@ -15,6 +17,7 @@ const ROOM_SHAPES = new Set([
   "rectangle",
   "diamond",
   "circle",
+  "octagon",
 ]);
 
 const CAMERA_MODES = new Set(["fixed", "follow"]);
@@ -43,6 +46,7 @@ export default class RoomDefinition {
     gridPosition,
     type = "combat",
     shape = "rectangle",
+    templateId = null,
     footprint = { width: 1, height: 1 },
     width = 800,
     height = 800,
@@ -76,9 +80,12 @@ export default class RoomDefinition {
       throw new TypeError(`Unsupported room type "${type}" for room "${id}".`);
     }
 
-    if (!ROOM_SHAPES.has(shape)) {
-      throw new TypeError(`Unsupported room shape "${shape}" for room "${id}".`);
+    const resolvedTemplateId = templateId ?? shape;
+    if (!hasRoomTemplate(resolvedTemplateId)) {
+      throw new TypeError(`Unknown room template "${resolvedTemplateId}" for room "${id}".`);
     }
+    const resolvedShape = getRoomTemplate(resolvedTemplateId).shape;
+    if (!ROOM_SHAPES.has(resolvedShape)) ROOM_SHAPES.add(resolvedShape);
 
     const footprintWidth = footprint?.width ?? 1;
     const footprintHeight = footprint?.height ?? 1;
@@ -115,7 +122,8 @@ export default class RoomDefinition {
       y: gridPosition.y,
     };
     this.type = type;
-    this.shape = shape;
+    this.shape = resolvedShape;
+    this.templateId = resolvedTemplateId;
     this.footprint = {
       width: footprintWidth,
       height: footprintHeight,
@@ -211,6 +219,14 @@ export default class RoomDefinition {
     return port;
   }
 
+  validatePortLayout(options = {}) {
+    return validateRoomPortLayout(this, options);
+  }
+
+  assertValidPortLayout(options = {}) {
+    return assertValidRoomPortLayout(this, options);
+  }
+
   getPortForConnection(connectionId) {
     return this.ports.find(port => port.connectionId === connectionId) ?? null;
   }
@@ -221,6 +237,7 @@ export default class RoomDefinition {
       gridPosition: { ...this.gridPosition },
       type: this.type,
       shape: this.shape,
+      templateId: this.templateId,
       footprint: { ...this.footprint },
       width: this.width,
       height: this.height,

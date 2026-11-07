@@ -1,4 +1,5 @@
 import FloorModel from "./FloorModel.js";
+import { getRoomTemplate } from "./RoomTemplateRegistry.js";
 
 const DIRECTIONS = [
   { name: "north", dx: 0, dy: -1 },
@@ -50,6 +51,47 @@ function createRandom(seed) {
 
 function randomInteger(min, max, random) {
   return min + Math.floor(random() * (max - min + 1));
+}
+
+function normalizeRoomTemplateWeights(roomTemplateWeights, fallbackTemplateId) {
+  const source = roomTemplateWeights ?? { [fallbackTemplateId]: 1 };
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new TypeError("roomTemplateWeights must be an object mapping template ids to non-negative weights.");
+  }
+
+  const entries = Object.keys(source).sort().map(templateId => {
+    // Resolve even zero-weight entries so misspelled template IDs fail early.
+    getRoomTemplate(templateId);
+    const weight = source[templateId];
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new TypeError(`Room template weight for "${templateId}" must be a finite non-negative number.`);
+    }
+    return { templateId, weight };
+  }).filter(entry => entry.weight > 0);
+
+  if (entries.length === 0) {
+    throw new RangeError("roomTemplateWeights must contain at least one template with a positive weight.");
+  }
+
+  const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+    throw new RangeError("The sum of room template weights must be finite and greater than zero.");
+  }
+
+  return entries;
+}
+
+function chooseWeightedRoomTemplate(entries, random) {
+  const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  let choice = random() * totalWeight;
+
+  for (const entry of entries) {
+    choice -= entry.weight;
+    if (choice < 0) return entry.templateId;
+  }
+
+  // Floating-point rounding can leave a tiny positive remainder.
+  return entries[entries.length - 1].templateId;
 }
 
 function shuffle(values, random) {
@@ -212,6 +254,7 @@ export default class FloorGenerator {
     roomWidth = 800,
     roomHeight = 800,
     roomShape = "square",
+    roomTemplateWeights = null,
     background = 0xffffff,
   } = {}) {
     if (typeof id !== "string" || id.trim() === "") {
@@ -238,6 +281,10 @@ export default class FloorGenerator {
       throw new TypeError("roomHeight must be a positive number.");
     }
 
+    const normalizedTemplateWeights = normalizeRoomTemplateWeights(
+      roomTemplateWeights,
+      roomShape
+    );
     const actualSeed = normalizeSeed(seed);
     const random = createRandom(actualSeed);
     const targetRoomCount = roomCount ?? randomInteger(minRooms, maxRooms, random);
@@ -350,20 +397,25 @@ export default class FloorGenerator {
       random,
     });
 
-    const rooms = roomNodes.map(node => ({
-      id: node.id,
-      gridPosition: node.gridPosition,
-      type: typesById.get(node.id),
-      shape: roomShape,
-      footprint: { width: 1, height: 1 },
-      width: roomWidth,
-      height: roomHeight,
-      background,
-      enemies: [],
-      cameraMode: "fixed",
-      isStartRoom: node.isStartRoom,
-      isBossRoom: node.isBossRoom,
-    }));
+    const rooms = roomNodes.map(node => {
+      const templateId = chooseWeightedRoomTemplate(normalizedTemplateWeights, random);
+      const template = getRoomTemplate(templateId);
+      return {
+        id: node.id,
+        gridPosition: node.gridPosition,
+        type: typesById.get(node.id),
+        shape: template.shape,
+        templateId,
+        footprint: { width: 1, height: 1 },
+        width: roomWidth,
+        height: roomHeight,
+        background,
+        enemies: [],
+        cameraMode: "fixed",
+        isStartRoom: node.isStartRoom,
+        isBossRoom: node.isBossRoom,
+      };
+    });
 
     const startRoom = roomNodes.find(node => node.isStartRoom);
 

@@ -163,6 +163,7 @@ export function configureDiamondVestibulePrototype(
 
   room.type = "combat";
   room.shape = "diamond";
+  room.templateId = "diamond";
   room.outlinePoints = outlinePoints;
 
   floor.setRoomPort(room.id, {

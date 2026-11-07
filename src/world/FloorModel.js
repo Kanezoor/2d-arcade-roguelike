@@ -1,6 +1,6 @@
 import RoomDefinition from "./RoomDefinition.js";
 import RoomState from "./RoomState.js";
-import RoomPort from "./RoomPort.js";
+import { createTemplateAwareRoomPort } from "./RoomPortGenerator.js";
 
 const DIRECTIONS = new Set(["north", "east", "south", "west"]);
 const OPPOSITE_DIRECTION = {
@@ -254,20 +254,18 @@ export default class FloorModel {
       const reverseDirection = OPPOSITE_DIRECTION[connection.directionFromA];
 
       if (!roomA.getPortForConnection(connection.id)) {
-        roomA.addPort(new RoomPort({
+        roomA.addPort(createTemplateAwareRoomPort(roomA, {
           id: `${roomA.id}:${connection.id}`,
           connectionId: connection.id,
           direction: connection.directionFromA,
-          mode: "direct",
         }));
       }
 
       if (!roomB.getPortForConnection(connection.id)) {
-        roomB.addPort(new RoomPort({
+        roomB.addPort(createTemplateAwareRoomPort(roomB, {
           id: `${roomB.id}:${connection.id}`,
           connectionId: connection.id,
           direction: reverseDirection,
-          mode: "direct",
         }));
       }
 

@@ -1,3 +1,5 @@
+import { getRoomTemplateOutline } from "./RoomTemplateRegistry.js";
+
 const TAU = Math.PI * 2;
 
 function pointOnSegmentDistance(point, start, end) {
@@ -27,35 +29,8 @@ export function getRoomOutlinePoints(room, circleSegments = 64) {
     return room.outlinePoints.map(point => ({ x: point.x, y: point.y }));
   }
 
-  if (room.shape === "diamond") {
-    return [
-      { x: room.width / 2, y: 0 },
-      { x: room.width, y: room.height / 2 },
-      { x: room.width / 2, y: room.height },
-      { x: 0, y: room.height / 2 },
-    ];
-  }
-
-  if (room.shape === "circle") {
-    const radius = Math.min(room.width, room.height) / 2;
-    const centerX = room.width / 2;
-    const centerY = room.height / 2;
-
-    return Array.from({ length: circleSegments }, (_, index) => {
-      const angle = (TAU * index) / circleSegments;
-      return {
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius,
-      };
-    });
-  }
-
-  return [
-    { x: 0, y: 0 },
-    { x: room.width, y: 0 },
-    { x: room.width, y: room.height },
-    { x: 0, y: room.height },
-  ];
+  const templateId = room.templateId ?? room.shape ?? "rectangle";
+  return getRoomTemplateOutline(templateId, room, circleSegments);
 }
 
 function isPointInPolygon(point, polygon) {
