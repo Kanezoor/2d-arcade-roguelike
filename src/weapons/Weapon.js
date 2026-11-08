@@ -202,6 +202,35 @@ export default class Weapon {
     this.fireMode?.update(pointer);
   }
 
+  /**
+   * Calculate aim using Phaser's camera-adjusted world coordinates.
+   * Pointer.x/y are screen coordinates and become incorrect when the
+   * gameplay camera is zoomed or scrolled.
+   */
+  getAimAngle(pointer) {
+    if (!pointer) {
+      throw new TypeError("Weapon.getAimAngle requires a pointer.");
+    }
+
+    const targetX = Number.isFinite(pointer.worldX)
+      ? pointer.worldX
+      : pointer.x;
+    const targetY = Number.isFinite(pointer.worldY)
+      ? pointer.worldY
+      : pointer.y;
+
+    if (!Number.isFinite(targetX) || !Number.isFinite(targetY)) {
+      throw new TypeError("Pointer must provide finite worldX/worldY or x/y coordinates.");
+    }
+
+    return Phaser.Math.Angle.Between(
+      this.owner.sprite.x,
+      this.owner.sprite.y,
+      targetX,
+      targetY,
+    );
+  }
+
   createProjectile({
     texture = 'bullet',
     damage,

@@ -19,26 +19,56 @@ export default class InventoryUI {
     this.dragState = null;
     this.dragPreviewGraphics = null;
     this.moduleSlotPress = null;
+    this.uiContainer = null;
+    this.uiScale = 1;
+    this.uiOffsetX = 0;
+    this.uiOffsetY = 0;
   }
 
   addObject(object, depth = 2000) {
     object.setDepth(depth);
     object.setScrollFactor(0);
     this.objects.push(object);
+    if (this.uiContainer) this.uiContainer.add(object);
     return object;
   }
 
+  getLocalPointer(pointer) {
+    return {
+      x: (pointer.x - this.uiOffsetX) / this.uiScale,
+      y: (pointer.y - this.uiOffsetY) / this.uiScale,
+    };
+  }
+
+  updateContainerTransform() {
+    const width = this.scene.scale.width;
+    const height = this.scene.scale.height;
+    this.uiScale = Math.min(
+      1,
+      Math.max(0.1, (width - 24) / 700),
+      Math.max(0.1, (height - 24) / 500)
+    );
+    this.uiOffsetX = width / 2 - 400 * this.uiScale;
+    this.uiOffsetY = height / 2 - 400 * this.uiScale;
+    this.uiContainer
+      .setPosition(this.uiOffsetX, this.uiOffsetY)
+      .setScale(this.uiScale);
+  }
+
   open() {
+    const worldScene = this.scene.gameScene ?? this.scene;
     if (
       this.isOpen ||
-      this.scene.isLevelUpOpen
+      this.scene.isLevelUpOpen ||
+      worldScene.isLevelUpOpen
     ) {
       return;
     }
 
     this.isOpen = true;
     this.scene.isInventoryOpen = true;
-    this.scene.matter.world.pause();
+    worldScene.isInventoryOpen = true;
+    worldScene.matter.world.pause();
 
     this.createUI();
 
@@ -99,8 +129,10 @@ export default class InventoryUI {
     this.cancelDrag();
 
     this.objects.forEach(object => {
-      object.destroy();
+      if (object?.active) object.destroy();
     });
+    if (this.uiContainer?.active) this.uiContainer.destroy();
+    this.uiContainer = null;
 
     this.objects = [];
     this.itemVisuals.clear();
@@ -109,14 +141,27 @@ export default class InventoryUI {
     this.hoveredItemId = null;
     this.isOpen = false;
     this.scene.isInventoryOpen = false;
-    this.scene.matter.world.resume();
+    const worldScene = this.scene.gameScene ?? this.scene;
+    worldScene.isInventoryOpen = false;
+    worldScene.matter.world.resume();
+  }
+
+  handleResize() {
+    if (!this.isOpen) return;
+    this.close();
+    this.open();
   }
 
   createUI() {
     const scene = this.scene;
+    this.uiContainer = scene.add.container(0, 0)
+      .setDepth(2000)
+      .setScrollFactor(0);
 
-    const centerX = scene.scale.width / 2;
-    const centerY = scene.scale.height / 2;
+    // Inventory visuals use a stable 800 x 800 design space. A parent
+    // container scales and centers the complete interface on smaller screens.
+    const centerX = 400;
+    const centerY = 400;
 
     const panelWidth = 700;
     const panelHeight = 500;
@@ -201,6 +246,8 @@ export default class InventoryUI {
       ).setOrigin(0.5),
       2002
     );
+
+    this.updateContainerTransform();
   }
 
   createEquipmentPanel(x, y) {
@@ -324,11 +371,12 @@ export default class InventoryUI {
             return;
           }
 
+          const localPointer = this.getLocalPointer(pointer);
           this.moduleSlotPress = {
             sourceWeaponSlotIndex: slotIndex,
             sourceModuleSlotIndex: moduleIndex,
-            startX: pointer.x,
-            startY: pointer.y,
+            startX: localPointer.x,
+            startY: localPointer.y,
             sDragging: false,
             background: slotBackground,
             label: slotLabel
@@ -545,20 +593,15 @@ export default class InventoryUI {
         });
 
         cell.on("pointerdown", pointer => {
+          const localPointer = this.getLocalPointer(pointer);
           const currentCellX = Math.floor(
-            (pointer.x - this.gridX) / this.cellSize
+            (localPointer.x - this.gridX) / this.cellSize
           );
-
           const currentCellY = Math.floor(
-            (pointer.y - this.gridY) / this.cellSize
+            (localPointer.y - this.gridY) / this.cellSize
           );
 
-          this.startDrag(
-            item,
-            currentCellX,
-            currentCellY,
-            pointer
-          );
+          this.startDrag(item, currentCellX, currentCellY, localPointer);
         });
 
         visuals.cells.push(cell);
@@ -926,12 +969,13 @@ refreshGridItems() {
 }
 
 handlePointerMove(pointer) {
+  const localPointer = this.getLocalPointer(pointer);
   if (this.moduleSlotPress) {
     const press = this.moduleSlotPress;
 
     const distance = Math.hypot(
-      pointer.x - press.startX,
-      pointer.y - press.startY
+      localPointer.x - press.startX,
+      localPointer.y - press.startY
     );
 
     if (distance >= 6) {
@@ -948,10 +992,11 @@ handlePointerMove(pointer) {
     return;
   }
 
-  this.updateDragPreview(pointer);
+  this.updateDragPreview(localPointer);
 }
 
 handlePointerUp(pointer) {
+  const localPointer = this.getLocalPointer(pointer);
   if (this.moduleSlotPress) {
     const press = this.moduleSlotPress;
 
@@ -961,7 +1006,7 @@ handlePointerUp(pointer) {
     press.label.setAlpha(1);
 
     if (press.isDragging) {
-      const target = this.getModuleSlotAtPointer(pointer);
+      const target = this.getModuleSlotAtPointer(localPointer);
 
       if (target) {
         this.moveInstalledModule(
@@ -988,7 +1033,7 @@ handlePointerUp(pointer) {
   const drag = this.dragState;
 
   const moduleTarget = this.getModuleSlotAtPointer(
-    pointer
+    localPointer
   );
 
   if (
@@ -1005,7 +1050,7 @@ handlePointerUp(pointer) {
     return;
   }
 
-  this.updateDragPreview(pointer);
+  this.updateDragPreview(localPointer);
 
   if (drag.isValid) {
     const moved = this.inventory.moveItem(

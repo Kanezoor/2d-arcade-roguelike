@@ -178,6 +178,129 @@ function findMainPath({
   return search() ? path : null;
 }
 
+const DEFAULT_ROOM_SIZE_SCALES = Object.freeze({
+  small: 0.85,
+  medium: 1,
+  large: 1.15,
+});
+
+function normalizeFootprintWeights(weights) {
+  const source = weights ?? { "1x1": 1 };
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new TypeError("roomFootprintWeights must map footprint keys such as '1x1' to non-negative weights.");
+  }
+
+  const entries = Object.keys(source).sort().map(key => {
+    const match = /^(\d+)x(\d+)$/.exec(key);
+    if (!match) {
+      throw new TypeError(`Invalid room footprint key "${key}". Expected the form "widthxheight", for example "2x1".`);
+    }
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0) {
+      throw new TypeError(`Room footprint "${key}" must contain positive integer dimensions.`);
+    }
+    const weight = source[key];
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new TypeError(`Room footprint weight for "${key}" must be a finite non-negative number.`);
+    }
+    return { key, width, height, weight };
+  }).filter(entry => entry.weight > 0);
+
+  const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  if (!entries.length || !Number.isFinite(total) || total <= 0) {
+    throw new RangeError("roomFootprintWeights must contain at least one positive finite weight.");
+  }
+  return entries;
+}
+
+function normalizeRoomSizeWeights(weights, scales) {
+  const source = weights ?? { medium: 1 };
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new TypeError("roomSizeWeights must map small, medium, or large to non-negative weights.");
+  }
+  const resolvedScales = { ...DEFAULT_ROOM_SIZE_SCALES, ...(scales ?? {}) };
+  for (const tier of ["small", "medium", "large"]) {
+    if (!Number.isFinite(resolvedScales[tier]) || resolvedScales[tier] <= 0) {
+      throw new TypeError(`roomSizeScales.${tier} must be a positive finite number.`);
+    }
+  }
+  const supportedTiers = ["small", "medium", "large"];
+  const unknownTiers = Object.keys(source).filter(tier => !supportedTiers.includes(tier));
+  if (unknownTiers.length) {
+    throw new TypeError(`Unknown room size tier(s): ${unknownTiers.join(", ")}.`);
+  }
+  const entries = Object.keys(source).sort().map(tier => {
+    const weight = source[tier];
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new TypeError(`Room size weight for "${tier}" must be a finite non-negative number.`);
+    }
+    return { tier, scale: resolvedScales[tier], weight };
+  }).filter(entry => entry.weight > 0);
+  const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  if (!entries.length || !Number.isFinite(total) || total <= 0) {
+    throw new RangeError("roomSizeWeights must contain at least one positive finite weight.");
+  }
+  return entries;
+}
+
+function isFootprintAvailable(position, footprint, gridWidth, gridHeight, occupied, roomId) {
+  if (
+    position.x + footprint.width > gridWidth ||
+    position.y + footprint.height > gridHeight
+  ) return false;
+
+  for (let y = position.y; y < position.y + footprint.height; y++) {
+    for (let x = position.x; x < position.x + footprint.width; x++) {
+      const owner = occupied.get(`${x},${y}`);
+      if (owner && owner !== roomId) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Assign rectangular grid footprints after the logical graph has been built.
+ * All room anchor cells are reserved first, so expansion can never cover a
+ * room node or invalidate a connection. Expansion is from the anchor toward
+ * positive grid X/Y; this keeps gridPosition stable for older save data.
+ */
+function assignRoomFootprints({ roomNodes, gridWidth, gridHeight, weights, random }) {
+  const occupied = new Map(roomNodes.map(node => [cellKey(node.gridPosition), node.id]));
+  const fallback = { key: "1x1", width: 1, height: 1, weight: 0 };
+  const selectionOrder = shuffle(roomNodes, random);
+  const byId = new Map();
+
+  for (const node of selectionOrder) {
+    const available = weights.filter(entry => isFootprintAvailable(
+      node.gridPosition, entry, gridWidth, gridHeight, occupied, node.id
+    ));
+    const selected = available.length
+      ? chooseWeightedRoomTemplate(available.map(entry => ({ templateId: entry.key, weight: entry.weight })), random)
+      : fallback.key;
+    const footprint = weights.find(entry => entry.key === selected) ?? fallback;
+
+    for (let y = node.gridPosition.y; y < node.gridPosition.y + footprint.height; y++) {
+      for (let x = node.gridPosition.x; x < node.gridPosition.x + footprint.width; x++) {
+        occupied.set(`${x},${y}`, node.id);
+      }
+    }
+    byId.set(node.id, { width: footprint.width, height: footprint.height });
+  }
+
+  return byId;
+}
+
+function chooseWeightedEntry(entries, random) {
+  const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  let choice = random() * totalWeight;
+  for (const entry of entries) {
+    choice -= entry.weight;
+    if (choice < 0) return entry;
+  }
+  return entries[entries.length - 1];
+}
+
 function chooseRoomTypes({ roomNodes, mainPathIds, random }) {
   const typesById = new Map();
   const startNode = roomNodes[0];
@@ -232,9 +355,9 @@ function chooseRoomTypes({ roomNodes, mainPathIds, random }) {
 /**
  * Generates a connected, data-only floor.
  *
- * The first version uses one-cell rooms and a tree-shaped room graph:
- * a guaranteed start-to-boss main path plus optional side branches.
- * It deliberately does not create Phaser objects, enemy instances, or Matter bodies.
+ * The room graph uses one-cell anchor positions for connectivity, then assigns
+ * non-overlapping multi-cell footprints and world-size tiers. It deliberately
+ * does not create Phaser objects, enemy instances, or Matter bodies.
  */
 export default class FloorGenerator {
   static generate({
@@ -255,6 +378,9 @@ export default class FloorGenerator {
     roomHeight = 800,
     roomShape = "square",
     roomTemplateWeights = null,
+    roomFootprintWeights = null,
+    roomSizeWeights = null,
+    roomSizeScales = null,
     background = 0xffffff,
   } = {}) {
     if (typeof id !== "string" || id.trim() === "") {
@@ -285,6 +411,8 @@ export default class FloorGenerator {
       roomTemplateWeights,
       roomShape
     );
+    const normalizedFootprintWeights = normalizeFootprintWeights(roomFootprintWeights);
+    const normalizedRoomSizeWeights = normalizeRoomSizeWeights(roomSizeWeights, roomSizeScales);
     const actualSeed = normalizeSeed(seed);
     const random = createRandom(actualSeed);
     const targetRoomCount = roomCount ?? randomInteger(minRooms, maxRooms, random);
@@ -391,6 +519,14 @@ export default class FloorGenerator {
       node.isBossRoom = false;
     }
 
+    const footprintsById = assignRoomFootprints({
+      roomNodes,
+      gridWidth,
+      gridHeight,
+      weights: normalizedFootprintWeights,
+      random,
+    });
+
     const typesById = chooseRoomTypes({
       roomNodes,
       mainPathIds: mainPathRoomIds,
@@ -400,18 +536,22 @@ export default class FloorGenerator {
     const rooms = roomNodes.map(node => {
       const templateId = chooseWeightedRoomTemplate(normalizedTemplateWeights, random);
       const template = getRoomTemplate(templateId);
+      const footprint = footprintsById.get(node.id) ?? { width: 1, height: 1 };
+      const sizeEntry = chooseWeightedEntry(normalizedRoomSizeWeights, random);
+      const sizeScale = sizeEntry.scale;
       return {
         id: node.id,
         gridPosition: node.gridPosition,
         type: typesById.get(node.id),
         shape: template.shape,
         templateId,
-        footprint: { width: 1, height: 1 },
-        width: roomWidth,
-        height: roomHeight,
+        footprint,
+        sizeTier: sizeEntry.tier,
+        sizeScale,
+        width: roomWidth * footprint.width * sizeScale,
+        height: roomHeight * footprint.height * sizeScale,
         background,
         enemies: [],
-        cameraMode: "fixed",
         isStartRoom: node.isStartRoom,
         isBossRoom: node.isBossRoom,
       };

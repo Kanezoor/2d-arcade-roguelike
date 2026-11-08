@@ -37,7 +37,7 @@ export default class UpgradeCard {
         0
       );
 
-      this.glow.setDepth(1001);
+      this.glow.setDepth(1001).setScrollFactor(0);
 
       this.glow.setStrokeStyle(
         this.choice.tier === 'veryRare' ? 8 : 6,
@@ -46,7 +46,7 @@ export default class UpgradeCard {
       );
 
       this.glow.setAlpha(
-        this.choice.tier === 'veryRare' ? 0.65 : 0,45
+        this.choice.tier === 'veryRare' ? 0.65 : 0.45
       );
 
       this.createGlowTween();
@@ -62,7 +62,7 @@ export default class UpgradeCard {
       1
     );
 
-    this.background.setDepth(1002);
+    this.background.setDepth(1002).setScrollFactor(0);
     this.background.setStrokeStyle(
       style.strokeWidth,
       style.strokeColor
@@ -108,13 +108,13 @@ export default class UpgradeCard {
       this.choice.tierLabel,
       {
         fontFamily: 'sans-serif',
-        fontSize: '14px',
+        fontSize: `${Math.max(11, Math.round(14 * Math.min(1, this.width / 180)))}px`,
         fill: this.getTierStyle().textColor,
         align: 'center'
       }
     ).setOrigin(0.5);
 
-    this.tierText.setDepth(1003);
+    this.tierText.setDepth(1003).setScrollFactor(0);
   }
 
   createTitle() {
@@ -124,7 +124,7 @@ export default class UpgradeCard {
       this.choice.title,
       {
         fontFamily: 'sans-serif',
-        fontSize: '20px',
+        fontSize: `${Math.max(13, Math.round(20 * Math.min(1, this.width / 180)))}px`,
         fill: '#ffffff',
         align: 'center',
         wordWrap: {
@@ -133,7 +133,7 @@ export default class UpgradeCard {
       }
     ).setOrigin(0.5);
 
-    this.titleText.setDepth(1003);
+    this.titleText.setDepth(1003).setScrollFactor(0);
   }
 
   createDescription() {
@@ -143,7 +143,7 @@ export default class UpgradeCard {
       this.choice.description,
       {
         fontFamily: 'sans-serif',
-        fontSize: '16px',
+        fontSize: `${Math.max(11, Math.round(16 * Math.min(1, this.width / 180)))}px`,
         fill: '#ffffff',
         align: 'center',
         wordWrap: {
@@ -152,7 +152,7 @@ export default class UpgradeCard {
       }
     ).setOrigin(0.5);
 
-    this.descriptionText.setDepth(1003);
+    this.descriptionText.setDepth(1003).setScrollFactor(0);
   }
 
 

@@ -20,6 +20,7 @@ import {
 import { getRoomOutlinePoints } from "../world/RoomGeometry.js";
 import { assertValidRoomPortLayout } from "../world/RoomPortLayoutValidator.js";
 import RoomTransitionController from "../world/RoomTransitionController.js";
+import { getRoomCameraLayout } from "../world/RoomCameraLayout.js";
 
 export default class RoomManager {
   constructor(scene) {
@@ -51,6 +52,20 @@ export default class RoomManager {
           octagon: 2,
           diamond: 2,
           circle: 1,
+        },
+        // Footprints reserve additional floor-grid cells and scale the room's
+        // world dimensions. The 1x1 option remains common enough to preserve
+        // compact combat rooms and keep the map from becoming too sparse.
+        roomFootprintWeights: {
+          "1x1": 8,
+          "2x1": 2,
+          "1x2": 2,
+          "2x2": 1,
+        },
+        roomSizeWeights: {
+          small: 1,
+          medium: 5,
+          large: 2,
         },
         background: 0xffffff,
       },
@@ -218,6 +233,7 @@ export default class RoomManager {
       this.scene.player.sprite.setVelocity(0, 0);
     }
 
+    this.configureRoomCamera(room);
     this.createExitDoors();
 
     if (this.isBossRoom) {
@@ -612,6 +628,37 @@ export default class RoomManager {
 
     this.isEncounterActive = true;
     return true;
+  }
+
+  configureRoomCamera(room) {
+    const camera = this.scene.cameras.main;
+    const player = this.scene.player?.sprite;
+    if (!camera || !room) return;
+
+    const viewportWidth = this.scene.scale?.width || camera.width || 800;
+    const viewportHeight = this.scene.scale?.height || camera.height || 800;
+    const layout = getRoomCameraLayout(
+      room.width,
+      room.height,
+      viewportWidth,
+      viewportHeight
+    );
+
+    camera.stopFollow();
+    camera.setZoom(layout.zoom);
+    camera.setBounds(
+      layout.bounds.x,
+      layout.bounds.y,
+      layout.bounds.width,
+      layout.bounds.height
+    );
+
+    if (room.cameraMode === "follow" && player) {
+      camera.centerOn(player.x, player.y);
+      camera.startFollow(player, true, 0.12, 0.12);
+    } else {
+      camera.centerOn(room.width / 2, room.height / 2);
+    }
   }
 
   createRoomFloor() {

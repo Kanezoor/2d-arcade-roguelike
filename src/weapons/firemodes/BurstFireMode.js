@@ -83,12 +83,7 @@ export default class BurstFireMode extends FireMode {
       return false;
     }
 
-    const baseAngle = Phaser.Math.Angle.Between(
-      this.owner.sprite.x,
-      this.owner.sprite.y,
-      this.pointer.x,
-      this.pointer.y,
-    );
+    const baseAngle = weapon.getAimAngle(this.pointer);
 
     const angle = weapon.getProjectileAngle(baseAngle);
 

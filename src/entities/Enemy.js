@@ -12,6 +12,7 @@ export default class Enemy {
 
     this.health = config.health;
     this.maxHealth = config.health;
+    this.isDead = false;
     this.speed = config.speed;
     this.damage = config.damage;
     this.score = config.score;
@@ -263,6 +264,12 @@ export default class Enemy {
   }
 
   takeDamage(context) {
+    // A destroyed enemy can still be present in a collision iteration for the
+    // current frame. Ignore further hits so XP and score are awarded once.
+    if (this.isDead || !this.sprite?.active) {
+      return false;
+    }
+
     this.health -= context.baseDamage;
 
     createParticles(
@@ -303,6 +310,7 @@ export default class Enemy {
 
     if (this.health <= 0) {
       this.health = 0;
+      this.isDead = true;
 
       createParticles(
         this.scene,
@@ -315,10 +323,13 @@ export default class Enemy {
       this.scene.player.gainExperience(this.xp);
       this.sprite.destroy();
 
-      this.scene.score += this.score;
-
-      this.scene.scoreText.setText('Score: ' + this.scene.score);
+      this.scene.score = (this.scene.score ?? 0) + this.score;
+      // HUDScene reads GameScene.score and renders it independently. Enemy
+      // entities must not hold or update screen-space HUD objects.
+      return true;
     }
+
+    return true;
   }
 
 }

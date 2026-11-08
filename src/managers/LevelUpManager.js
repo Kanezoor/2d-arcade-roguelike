@@ -1,99 +1,99 @@
 import UpgradeCard from "./UpgradeCard.js";
-
 import { getLevelUpChoices } from "../progression/LevelUpUpgrades.js";
+
 export default class LevelUpManager {
   constructor(scene) {
     this.scene = scene;
     this.objects = [];
     this.choices = [];
     this.cards = [];
-
     this.isSelecting = false;
-
     this.isOpen = false;
     this.waitForPointerRelease = false;
+    this.panelWidth = 700;
+    this.panelHeight = 500;
   }
-  
+
   show() {
-    if (this.isOpen) {
-      return;
-    }
+    if (this.isOpen) return;
 
     this.isOpen = true;
-
     this.scene.isLevelUpOpen = true;
-    this.scene.matter.world.pause();
-
+    const worldScene = this.scene.gameScene ?? this.scene;
+    worldScene.isLevelUpOpen = true;
+    worldScene.matter.world.pause();
     this.waitForPointerRelease = this.scene.input.activePointer.isDown;
 
     if (this.waitForPointerRelease) {
-      this.scene.input.once('pointerup', () => {
+      this.scene.input.once("pointerup", () => {
         this.scene.time.delayedCall(0, () => {
           this.waitForPointerRelease = false;
         });
       });
     }
 
-    this.createUI();
+    this.createUI(true);
   }
 
-  createUI() {
+  createUI(rebuildChoices = false) {
     const scene = this.scene;
+    const viewportWidth = scene.scale.width;
+    const viewportHeight = scene.scale.height;
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const margin = 16;
 
-    const centerX = scene.scale.width / 2;
-    const centerY = scene.scale.height / 2;
+    this.panelWidth = Math.max(280, Math.min(700, viewportWidth - margin * 2));
+    this.panelHeight = Math.max(250, Math.min(500, viewportHeight - margin * 2));
+    const panelTop = centerY - this.panelHeight / 2;
 
-    const background = scene.add.rectangle(
-      centerX,
-      centerY,
-      700,
-      500,
-      0x111111,
-      0.95
+    this.objects.push(
+      scene.add.rectangle(
+        centerX,
+        centerY,
+        this.panelWidth,
+        this.panelHeight,
+        0x111111,
+        0.95
+      ).setDepth(1000).setScrollFactor(0)
     );
-
-    background.setDepth(1000);
-
-    this.objects.push(background);
 
     const title = scene.add.text(
       centerX,
-      centerY - 200,
+      panelTop + 42,
       `LEVEL ${scene.player.level}`,
       {
-        fontFamily: 'sans-serif',
-        fontSize: '40px',
-        fill: '#ffffff'
+        fontFamily: "sans-serif",
+        fontSize: "40px",
+        color: "#ffffff",
+        align: "center",
       }
-    ).setOrigin(0.5);
-
-    title.setDepth(1001);
-
+    ).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
     this.objects.push(title);
 
     const subtitle = scene.add.text(
       centerX,
-      centerY - 145,
-      'Choose an upgrade',
+      panelTop + 88,
+      "Choose an upgrade",
       {
-        fontFamily: 'sans-serif',
-        fontSize: '22px',
-        fill: '#ffffff'
+        fontFamily: "sans-serif",
+        fontSize: "22px",
+        color: "#ffffff",
+        align: "center",
       }
-    ).setOrigin(0.5);
-
-    subtitle.setDepth(1001);
+    ).setOrigin(0.5).setDepth(1001).setScrollFactor(0);
     this.objects.push(subtitle);
 
-    this.choices = this.buildChoices();
+    if (rebuildChoices || this.choices.length === 0) {
+      this.choices = this.buildChoices();
+    }
 
     const cardLayout = this.getCardLayout(this.choices.length);
-
     this.cards = [];
-    
+
     this.choices.forEach((choice, index) => {
       const layout = cardLayout[index];
-
+      if (!layout) return;
       const card = new UpgradeCard(
         scene,
         choice,
@@ -101,9 +101,8 @@ export default class LevelUpManager {
         layout.y,
         layout.width,
         layout.height,
-        () => this.selectChoice(choice, card),
+        () => this.selectChoice(choice, card)
       );
-
       this.cards.push(card);
     });
   }
@@ -113,126 +112,97 @@ export default class LevelUpManager {
   }
 
   selectChoice(choice, selectedCard) {
-    if (this.isSelecting) {
-      return;
-    }
-
+    if (this.isSelecting || this.waitForPointerRelease) return;
     this.isSelecting = true;
 
-    console.log(
-      'Level-up choice',
-      choice.title,
-      choice.tierLabel,
-    );
-
+    console.log("Level-up choice", choice.title, choice.tierLabel);
     this.cards.forEach(card => {
-      if (card === selectedCard) {
-        card.animateSelected();
-      } else {
-        card.animateDeselected();
-      }
+      if (card === selectedCard) card.animateSelected();
+      else card.animateDeselected();
     });
 
     this.scene.time.delayedCall(300, () => {
-      choice.apply(this.scene.player);
-
+      const worldScene = this.scene.gameScene ?? this.scene;
+      choice.apply(worldScene.player);
       this.close();
-
       this.scene.time.delayedCall(0, () => {
-        this.scene.player.completeLevelUp();
+        worldScene.player.completeLevelUp();
       });
     });
-    
+  }
+
+  destroyUI() {
+    this.cards.forEach(card => card?.destroy());
+    this.cards = [];
+    this.objects.forEach(object => object?.destroy());
+    this.objects = [];
+  }
+
+  handleResize() {
+    if (!this.isOpen || this.isSelecting) return;
+    this.destroyUI();
+    this.createUI(false);
   }
 
   close() {
-    if (!this.isOpen) {
-      return;
-    }
+    if (!this.isOpen) return;
 
-    this.cards.forEach(card => {
-      if (card) {
-        card.destroy();
-      }
-    });
-
-    this.cards = [];
-
-    this.objects.forEach(object => {
-      if (object) {
-        object.destroy();
-      }
-    });
-
+    this.destroyUI();
     this.isSelecting = false;
-    this.objects = [];
     this.isOpen = false;
     this.waitForPointerRelease = false;
     this.scene.isLevelUpOpen = false;
-    this.scene.matter.world.resume();
+    const worldScene = this.scene.gameScene ?? this.scene;
+    worldScene.isLevelUpOpen = false;
+    worldScene.matter.world.resume();
   }
 
   getCardLayout(count) {
-    const panelWidth = 700;
+    if (count <= 0) return [];
 
-    const panelCenterX = this.scene.scale.width / 2;
-    const panelCenterY = this.scene.scale.height / 2;
+    const centerX = this.scene.scale.width / 2;
+    const centerY = this.scene.scale.height / 2;
+    const panelLeft = centerX - this.panelWidth / 2;
+    const panelTop = centerY - this.panelHeight / 2;
+    const horizontalPadding = Math.min(32, this.panelWidth * 0.06);
+    const availableWidth = this.panelWidth - horizontalPadding * 2;
 
-    const horizontalPadding = 40;
-
-    const preferredCardWidth = 180;
-    const minCardWidth = 120;
-
-    const preferredGap = 20;
-    const rowGap = 20;
-    
-    let columns;
-
-    if (count <= 4) 
-      columns = count;
-    else if (count <= 6) 
-      columns = 3;
-    else 
-      columns = 4;
+    let columns = count <= 4 ? count : 3;
+    if (this.panelWidth < 410) columns = Math.min(2, count);
+    if (this.panelWidth < 300) columns = 1;
 
     const rows = Math.ceil(count / columns);
+    const gap = this.panelWidth < 480 ? 10 : 16;
+    const cardWidth = Math.max(
+      92,
+      Math.min(180, (availableWidth - gap * (columns - 1)) / columns)
+    );
 
-    const availableWidth = panelWidth - horizontalPadding * 2;
+    const headerHeight = Math.min(132, this.panelHeight * 0.28);
+    const bottomPadding = 18;
+    const verticalGap = 12;
+    const availableCardHeight = Math.max(
+      72,
+      this.panelHeight - headerHeight - bottomPadding - verticalGap * (rows - 1)
+    );
+    const cardHeight = Math.min(
+      rows === 1 ? 220 : 180,
+      availableCardHeight / rows
+    );
 
-    let gap = preferredGap;
-
-    let cardWidth = (availableWidth - gap * (columns - 1)) / columns;
-
-    cardWidth = Math.min(cardWidth, preferredCardWidth);
-
-    if (cardWidth < minCardWidth) {
-      gap = 12;
-
-      cardWidth = (availableWidth - gap * (columns - 1)) / columns;
-    }
-
-    const cardHeight = rows === 1 ? 220 : 180;
-
-    const gridCenterY = panelCenterY - 60 + (rows - 1) * 90;
-
-    const totalGridHeight = rows * cardHeight + (rows - 1) * rowGap;
-
-    const gridTop = gridCenterY - totalGridHeight / 2;
+    const gridHeight = rows * cardHeight + (rows - 1) * verticalGap;
+    const gridTop = panelTop + headerHeight +
+      Math.max(0, (this.panelHeight - headerHeight - bottomPadding - gridHeight) / 2);
 
     const positions = [];
-
     for (let row = 0; row < rows; row++) {
       const firstIndex = row * columns;
-
       const itemsInRow = Math.min(columns, count - firstIndex);
-
       const rowWidth = itemsInRow * cardWidth + (itemsInRow - 1) * gap;
+      const rowStartX = centerX - rowWidth / 2 + cardWidth / 2;
+      const y = gridTop + cardHeight / 2 + row * (cardHeight + verticalGap);
 
-      const rowStartX = panelCenterX - rowWidth / 2 + cardWidth / 2;
-
-      const y = gridTop + cardHeight / 2 + row * (cardHeight + rowGap);
-
-      for (let column = 0; column < itemsInRow; column ++) {
+      for (let column = 0; column < itemsInRow; column++) {
         positions.push({
           x: rowStartX + column * (cardWidth + gap),
           y,
@@ -244,5 +214,4 @@ export default class LevelUpManager {
 
     return positions;
   }
-
 }

@@ -12,9 +12,17 @@ export default class WorldItemPickupSystem {
     this.feedbackMessage = "";
     this.feedbackUntil = 0;
 
-    this.promptText = scene.add.text(
-      scene.scale.width / 2,
-      scene.scale.height - 45,
+    this.promptText = null;
+  }
+
+  ensurePromptText() {
+    if (this.promptText?.active) return;
+    const screen = this.scene.hudScene;
+    if (!screen) return;
+
+    this.promptText = screen.add.text(
+      screen.scale.width / 2,
+      screen.scale.height - 45,
       "",
       {
         fontFamily: "sans-serif",
@@ -22,7 +30,7 @@ export default class WorldItemPickupSystem {
         color: "#ffffff",
         backgroundColor: "#171717",
         padding: { x: 12, y: 8 },
-        align: "center"
+        align: "center",
       }
     )
       .setOrigin(0.5)
@@ -31,7 +39,17 @@ export default class WorldItemPickupSystem {
       .setVisible(false);
   }
 
+  layoutPrompt() {
+    if (!this.promptText?.active || !this.scene.hudScene) return;
+    this.promptText.setPosition(
+      this.scene.hudScene.scale.width / 2,
+      this.scene.hudScene.scale.height - 45
+    );
+  }
+
   update() {
+    this.ensurePromptText();
+    if (!this.promptText) return;
     const scene = this.scene;
 
     if (

@@ -21,6 +21,7 @@ const ROOM_SHAPES = new Set([
 ]);
 
 const CAMERA_MODES = new Set(["fixed", "follow"]);
+const ROOM_SIZE_TIERS = new Set(["small", "medium", "large"]);
 
 function assertPositiveInteger(value, label) {
   if (!Number.isInteger(value) || value <= 0) {
@@ -48,6 +49,8 @@ export default class RoomDefinition {
     shape = "rectangle",
     templateId = null,
     footprint = { width: 1, height: 1 },
+    sizeTier = "medium",
+    sizeScale = 1,
     width = 800,
     height = 800,
     background = 0xffffff,
@@ -100,8 +103,15 @@ export default class RoomDefinition {
       throw new TypeError(`Room "${id}" height must be a positive number.`);
     }
 
+    if (!ROOM_SIZE_TIERS.has(sizeTier)) {
+      throw new TypeError(`Unsupported room size tier "${sizeTier}" for room "${id}".`);
+    }
+    if (!Number.isFinite(sizeScale) || sizeScale <= 0) {
+      throw new TypeError(`Room "${id}" sizeScale must be a positive finite number.`);
+    }
+
     const resolvedCameraMode = cameraMode ?? (
-      footprintWidth > 1 || footprintHeight > 1
+      footprintWidth > 1 || footprintHeight > 1 || sizeTier === "large"
         ? "follow"
         : "fixed"
     );
@@ -128,6 +138,8 @@ export default class RoomDefinition {
       width: footprintWidth,
       height: footprintHeight,
     };
+    this.sizeTier = sizeTier;
+    this.sizeScale = sizeScale;
 
     // width/height are world-space dimensions retained for current gameplay code.
     this.width = width;
@@ -239,6 +251,8 @@ export default class RoomDefinition {
       shape: this.shape,
       templateId: this.templateId,
       footprint: { ...this.footprint },
+      sizeTier: this.sizeTier,
+      sizeScale: this.sizeScale,
       width: this.width,
       height: this.height,
       background: this.background,

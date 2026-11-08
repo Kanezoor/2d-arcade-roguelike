@@ -12,12 +12,7 @@ export default class AutomaticFireMode extends FireMode {
       return;
     }
 
-    const baseAngle = Phaser.Math.Angle.Between(
-      this.owner.sprite.x,
-      this.owner.sprite.y,
-      pointer.x,
-      pointer.y,
-    );
+    const baseAngle = weapon.getAimAngle(pointer);
 
     const angle = weapon.getProjectileAngle(
       baseAngle,

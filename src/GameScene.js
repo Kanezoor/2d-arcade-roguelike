@@ -2,12 +2,11 @@ import { createTextures } from "./textures.js";
 import Player from "./entities/Player.js";
 import { hitEnemy, createEnemies, updateEnemies } from "./managers/EnemyManager.js";
 import RoomManager from "./managers/RoomManager.js";
-import { createUI, drawUI, showGameOverScreen, showVictoryScreen } from "./ui.js";
+import { showGameOverScreen, showVictoryScreen, refreshEndScreenLayout } from "./ui.js";
+import HUDScene from "./HUDScene.js";
 import DamageSystem from "./combat/DamageSystem.js";
 import DamageContext from "./combat/DamageContext.js";
 import DamageType from "./combat/DamageType.js";
-import LevelUpManager from "./managers/LevelUpManager.js";
-import InventoryUI from "./inventory/InventoryUI.js";
 import InventoryItem from "./inventory/InventoryItem.js";
 import { ITEM_DEFINITIONS } from "./inventory/ItemDefinitions.js";
 import WorldItem from "./items/WorldItem.js";
@@ -29,16 +28,12 @@ export class GameScene extends Phaser.Scene {
     createTextures(this);
 
     this.player = new Player(this);
-    this.levelUpManager = new LevelUpManager(this);
+    this.levelUpManager = null;
+    this.inventoryUI = null;
+    this.hudScene = null;
     this.isLevelUpOpen = false;
-
     this.isInventoryOpen = false;
     this.isRoomTransitioning = false;
-
-    this.inventoryUI = new InventoryUI(
-      this,
-      this.player.inventory
-    );
 
     this.input.keyboard.on("keydown-TAB", event => {
       event.preventDefault();
@@ -47,14 +42,14 @@ export class GameScene extends Phaser.Scene {
         return;
       }   
 
-      if (this.inventoryUI.isOpen ) {
+      if (this.inventoryUI?.isOpen) {
         this.inventoryUI.close();
       } else {
-        this.inventoryUI.open();
+        this.inventoryUI?.open();
       }
     });
 
-    createUI(this);
+    this.enemyHpGraphics = this.add.graphics().setDepth(900);
 
     createEnemies(this);
 
@@ -87,6 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.score = 0;
 
     this.isGameOver = false;
+    this.endScreenObjects = null;
 
     this.matter.world.on(
       'collisionstart',
@@ -135,9 +131,32 @@ export class GameScene extends Phaser.Scene {
     this.roomManager.start();
 
     this.createWorldWeapon(this.player.laserGun);
+
+    // Keep screen-space UI and interactive menus out of the zooming world camera.
+    if (this.game.scene.keys?.HUDScene) {
+      this.scene.stop("HUDScene");
+      this.scene.remove("HUDScene");
+    }
+    this.scene.add("HUDScene", HUDScene, false);
+    this.scene.launch("HUDScene", { gameScene: this });
+
+    this.scale.off("resize", this.handleViewportResize, this);
+    this.scale.on("resize", this.handleViewportResize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", this.handleViewportResize, this);
+    });
   }
 
   
+  handleViewportResize() {
+    if (this.roomManager?.currentRoomData && !this.isRoomTransitioning) {
+      this.roomManager.configureRoomCamera(this.roomManager.currentRoomData);
+    }
+
+    this.worldItemPickupSystem?.layoutPrompt?.();
+    refreshEndScreenLayout(this);
+  }
+
   createWorldItem(item) {
     if (!item || !this.player?.sprite || !this.worldItems) {
       return null;
@@ -593,8 +612,6 @@ export class GameScene extends Phaser.Scene {
     if (this.roomManager.boss) {
       this.roomManager.boss.update(this.game.loop.delta);
     }
-
-    drawUI(this);
 
     if (this.roomManager && this.roomManager.isRunComplete && !this.isVictory) {
       this.isVictory = true;

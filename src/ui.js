@@ -1,269 +1,217 @@
-export function drawUI(scene) {
+export function layoutUI(hudScene) {
+  if (!hudScene?.scoreText || !hudScene?.weaponNameText) {
+    return;
+  }
 
-  scene.uiGraphics.clear();
+  const width = hudScene.scale.width;
+  const height = hudScene.scale.height;
+  const panelWidth = 190;
+  const panelHeight = 85;
+  const rightMargin = 35;
+  const bottomMargin = 25;
+  const panelX = Math.max(12, width - rightMargin - panelWidth);
+  const panelY = Math.max(12, height - bottomMargin - panelHeight);
+  const textX = Math.min(width - 12, panelX + panelWidth - 12);
 
-  
-  const weaponPanelWidth = 190;
-  const weaponPanelHeight = 85;
-  const hudRightMargin = 35;
-  const hudBottomMargin = 25;
+  hudScene.weaponPanelBounds = {
+    x: panelX,
+    y: panelY,
+    width: Math.min(panelWidth, Math.max(0, width - panelX - 8)),
+    height: Math.min(panelHeight, Math.max(0, height - panelY - 8)),
+  };
 
-  const weaponPanelX =
-    scene.scale.width -
-    hudRightMargin -
-    weaponPanelWidth;
+  hudScene.weaponNameText.setPosition(textX, panelY + 22);
+  hudScene.weaponAmmoText.setPosition(textX, panelY + 50);
+  hudScene.weaponReloadText.setPosition(textX, panelY + 72);
+  hudScene.scoreText.setPosition(20, 20);
+}
 
-  const weaponPanelY =
-    scene.scale.height -
-    hudBottomMargin -
-    weaponPanelHeight;
-  
-  const weaponTextX =
-    weaponPanelX +
-    weaponPanelWidth -
-    12;
+export function drawUI(gameScene, hudScene) {
+  if (!gameScene || !hudScene?.uiGraphics || !gameScene.player) {
+    return;
+  }
 
-  scene.weaponNameText.setX(weaponTextX);
-  scene.weaponAmmoText.setX(weaponTextX);
-  scene.weaponReloadText.setX(weaponTextX);
-  
-  scene.uiGraphics.fillStyle(
-    0xffffff,
-    0.75
-  );
+  const graphics = hudScene.uiGraphics;
+  graphics.clear();
 
-  scene.uiGraphics.fillRect(
-    weaponPanelX,
-    weaponPanelY,
-    weaponPanelWidth,
-    weaponPanelHeight
-  );
+  const panel = hudScene.weaponPanelBounds;
+  if (panel) {
+    graphics.fillStyle(0xffffff, 0.75);
+    graphics.fillRect(panel.x, panel.y, panel.width, panel.height);
+    graphics.lineStyle(2, 0x555555, 0.8);
+    graphics.strokeRect(panel.x, panel.y, panel.width, panel.height);
+  }
 
-  scene.uiGraphics.lineStyle(
-    2,
-    0x555555,
-    0.8
-  );
-
-  scene.uiGraphics.strokeRect(
-    weaponPanelX,
-    weaponPanelY,
-    weaponPanelWidth,
-    weaponPanelHeight
-  );
-
-  const weapon = scene.player.activeWeapon;
-
+  const weapon = gameScene.player.activeWeapon;
   if (weapon) {
-    scene.weaponNameText.setText(
-      weapon.name
-    );
-
-    if (
+    hudScene.weaponNameText.setText(weapon.name);
+    hudScene.weaponAmmoText.setText(
       weapon.currentAmmo === Infinity
-    ) {
-      scene.weaponAmmoText.setText(
-        'READY'
-      );
-    } else {
-      scene.weaponAmmoText.setText(
-        `${weapon.currentAmmo} / ${weapon.stats.magazineSize}`
-      );
-    }
-
-    if (weapon.isReloading) {
-      scene.weaponReloadText.setText(
-        'RELOADING...'
-      );
-    } else {
-      scene.weaponReloadText.setText('');
-    }
+        ? "READY"
+        : `${weapon.currentAmmo} / ${weapon.stats.magazineSize}`
+    );
+    hudScene.weaponReloadText.setText(weapon.isReloading ? "RELOADING..." : "");
   } else {
-    scene.weaponNameText.setText('No weapon');
-    scene.weaponAmmoText.setText('');
-    scene.weaponReloadText.setText('');
+    hudScene.weaponNameText.setText("No weapon");
+    hudScene.weaponAmmoText.setText("");
+    hudScene.weaponReloadText.setText("");
   }
 
   const barX = 20;
   const barY = 55;
-  const barWidth = 200;
-  const barHeigth = 20;
-
-  scene.uiGraphics.fillStyle(0x323232, 0.5);
-  scene.uiGraphics.fillRect(barX, barY, barWidth, barHeigth);
-
-  if (scene.time.now - scene.lastDamageTime < scene.damageCooldown) {
-    scene.uiGraphics.fillStyle(0xffff00, 1);
-  } else {
-    scene.uiGraphics.fillStyle(0xff0000, 1);;
-  }
-
-  const hpPercentage = scene.player.health / scene.player.maxHealth;
-  scene.uiGraphics.fillRect(barX, barY, barWidth * hpPercentage, barHeigth);
-
-  scene.uiGraphics.lineStyle(2, 0xffa500, 1);
-  scene.uiGraphics.strokeRect(barX, barY, barWidth, barHeigth);
-
-  scene.enemies.getChildren().forEach(currEnemy => {
-    if (currEnemy.health < currEnemy.maxHealth) {
-      const enemyHpY = currEnemy.y - (currEnemy.height / 2) - 8;
-      const hpBarWidth = currEnemy.width;
-      const hpBarHeight = 4;
-
-      scene.uiGraphics.fillStyle(0xff0000, 1);
-      scene.uiGraphics.fillRect(currEnemy.x - currEnemy.width / 2, enemyHpY, hpBarWidth, hpBarHeight);
-
-      scene.uiGraphics.fillStyle(0x00ff00, 1);
-      const percent = currEnemy.health / currEnemy.maxHealth;
-      scene.uiGraphics.fillRect(currEnemy.x - currEnemy.width / 2, enemyHpY, hpBarWidth * percent, hpBarHeight);
-    }
-  });
-}
-
-export function createUI(scene) {
-
-  scene.scoreText = scene.add.text(
-    20,
-    20,
-    "Score: 0",
-    {
-      fontFamily: "sans-serif",
-      fontSize: "24px",
-      fill: "#ffa500"
-    }
+  const barWidth = Math.min(200, Math.max(80, hudScene.scale.width - 40));
+  const barHeight = 20;
+  const hpPercentage = Phaser.Math.Clamp(
+    gameScene.player.health / Math.max(1, gameScene.player.maxHealth),
+    0,
+    1
   );
 
-  scene.uiGraphics = scene.add.graphics();
+  graphics.fillStyle(0x323232, 0.5);
+  graphics.fillRect(barX, barY, barWidth, barHeight);
+  graphics.fillStyle(
+    gameScene.time.now - gameScene.player.lastDamageTime < gameScene.player.damageCooldown
+      ? 0xffff00
+      : 0xff0000,
+    1
+  );
+  graphics.fillRect(barX, barY, barWidth * hpPercentage, barHeight);
+  graphics.lineStyle(2, 0xffa500, 1);
+  graphics.strokeRect(barX, barY, barWidth, barHeight);
 
-  const weaponPanelWidth = 190;
-  const weaponPanelHeight = 85;
-  const hudRightMargin = 35;
-  const hudBottomMargin = 25;
+  if (hudScene.scoreText) {
+    hudScene.scoreText.setText(`Score: ${gameScene.score ?? 0}`);
+  }
 
-  const weaponPanelX =
-    scene.scale.width -
-    hudRightMargin -
-    weaponPanelWidth;
-
-  const weaponPanelY =
-    scene.scale.height -
-    hudBottomMargin -
-    weaponPanelHeight;
-
-  const weaponTextX =
-    weaponPanelX +
-    weaponPanelWidth -
-    12;
-
-  scene.weaponNameText = scene.add.text(
-    weaponTextX,
-    weaponPanelY + 22,
-    '',
-    {
-      fontFamily: 'sans-serif',
-      fontSize: '20px',
-      fill: '#000000',
-      align: 'right'
-    }
-  ).setOrigin(1, 0.5);
-
-  scene.weaponAmmoText = scene.add.text(
-    weaponTextX,
-    weaponPanelY + 50,
-    '',
-    {
-      fontFamily: 'sans-serif',
-      fontSize: '18px',
-      fill: '#000000',
-      align: 'right'
-    }
-  ).setOrigin(1, 0.5);
-
-  scene.weaponReloadText = scene.add.text(
-    weaponTextX,
-    weaponPanelY + 72,
-    '',
-    {
-      fontFamily: 'sans-serif',
-      fontSize: '14px',
-      fill: '#555555',
-      align: 'right'
-    }
-  ).setOrigin(1, 0.5);
+  // Enemy health bars belong to world space and must follow the gameplay camera.
+  const enemyGraphics = gameScene.enemyHpGraphics;
+  if (enemyGraphics) {
+    enemyGraphics.clear();
+    gameScene.enemies?.getChildren().forEach(enemy => {
+      if (!enemy.active || enemy.health >= enemy.maxHealth) return;
+      const enemyY = enemy.y - enemy.height / 2 - 8;
+      const enemyWidth = enemy.width;
+      const percent = Phaser.Math.Clamp(enemy.health / Math.max(1, enemy.maxHealth), 0, 1);
+      enemyGraphics.fillStyle(0xff0000, 1);
+      enemyGraphics.fillRect(enemy.x - enemyWidth / 2, enemyY, enemyWidth, 4);
+      enemyGraphics.fillStyle(0x00ff00, 1);
+      enemyGraphics.fillRect(enemy.x - enemyWidth / 2, enemyY, enemyWidth * percent, 4);
+    });
+  }
 }
 
-export function showGameOverScreen(scene) {
-  console.log("showGameOver called");
-  const overlay = scene.add.rectangle(400, 300, 800, 800, 0x000000, 0.7);
+export function createUI(hudScene) {
+  hudScene.scoreText = hudScene.add.text(20, 20, "Score: 0", {
+    fontFamily: "sans-serif",
+    fontSize: "24px",
+    color: "#ffa500",
+  }).setScrollFactor(0).setDepth(100);
 
-  scene.add.text(400, 220, 'Game Over', {
-    fontFamily: 'sans-serif',
-    fontSize: '48px',
-    fill: '#ffffff'
-  }).setOrigin(0.5);
+  hudScene.uiGraphics = hudScene.add.graphics()
+    .setScrollFactor(0)
+    .setDepth(99);
 
-  scene.add.text(400, 280, 'Final Score: ' + scene.score, {
-    fontFamily: 'sans-serif',
-    fontSize: '24px',
-    fill: '#ffffff'
-  }).setOrigin(0.5);
+  hudScene.weaponNameText = hudScene.add.text(0, 0, "", {
+    fontFamily: "sans-serif",
+    fontSize: "20px",
+    color: "#000000",
+    align: "right",
+  }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
 
-  const restartText = scene.add.text(400, 340, 'Click anywhere to restart', {
-    fontFamily: 'sans-serif',
-    fontSize: '20px',
-    fill: '#ffa500',
-  }).setOrigin(0.5);
+  hudScene.weaponAmmoText = hudScene.add.text(0, 0, "", {
+    fontFamily: "sans-serif",
+    fontSize: "18px",
+    color: "#000000",
+    align: "right",
+  }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
 
-  scene.tweens.add({
-    targets: restartText,
+  hudScene.weaponReloadText = hudScene.add.text(0, 0, "", {
+    fontFamily: "sans-serif",
+    fontSize: "14px",
+    color: "#555555",
+    align: "right",
+  }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(100);
+
+  layoutUI(hudScene);
+}
+
+function getScreenScene(gameScene) {
+  return gameScene.hudScene ?? gameScene;
+}
+
+function layoutEndScreen(gameScene) {
+  const screen = getScreenScene(gameScene);
+  const objects = gameScene.endScreenObjects;
+  if (!objects) return;
+
+  const width = screen.scale.width;
+  const height = screen.scale.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  objects.overlay.setPosition(centerX, centerY).setSize(width, height);
+  objects.title.setPosition(centerX, centerY - 80);
+  objects.score.setPosition(centerX, centerY - 20);
+  objects.restart.setPosition(centerX, centerY + 45);
+}
+
+export function refreshEndScreenLayout(gameScene) {
+  layoutEndScreen(gameScene);
+}
+
+function showEndScreen(gameScene, titleText, restartText) {
+  if (gameScene.endScreenObjects) return;
+
+  const screen = getScreenScene(gameScene);
+  const width = screen.scale.width;
+  const height = screen.scale.height;
+  const centerX = width / 2;
+  const centerY = height / 2;
+
+  const overlay = screen.add.rectangle(centerX, centerY, width, height, 0x000000, 0.7)
+    .setScrollFactor(0)
+    .setDepth(5000);
+
+  const title = screen.add.text(centerX, centerY - 80, titleText, {
+    fontFamily: "sans-serif",
+    fontSize: "48px",
+    color: "#ffffff",
+    align: "center",
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(5001);
+
+  const score = screen.add.text(centerX, centerY - 20, `Final Score: ${gameScene.score}`, {
+    fontFamily: "sans-serif",
+    fontSize: "24px",
+    color: "#ffffff",
+    align: "center",
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(5001);
+
+  const restart = screen.add.text(centerX, centerY + 45, restartText, {
+    fontFamily: "sans-serif",
+    fontSize: "20px",
+    color: "#ffa500",
+    align: "center",
+  }).setOrigin(0.5).setScrollFactor(0).setDepth(5001);
+
+  gameScene.endScreenObjects = { overlay, title, score, restart };
+
+  screen.tweens.add({
+    targets: restart,
     alpha: 0.3,
     duration: 800,
     yoyo: true,
     loop: -1,
   });
 
-  scene.input.once('pointerdown', () => {
-    scene.scene.restart();
+  screen.input.once("pointerdown", () => {
+    gameScene.scene.restart();
   });
 }
 
+export function showGameOverScreen(scene) {
+  showEndScreen(scene, "Game Over", "Click anywhere to restart");
+}
+
 export function showVictoryScreen(scene) {
-  console.log('showVictory called');
-
-  const overlay = scene.add.rectangle(400, 300, 800, 800, 0x000000, 0.7);
-
-  scene.add.text(400, 220, 'Victory', {
-      fontFamily: 'sans-serif',
-      fontSize: '48px',
-      fill: '#ffffff'   
-  }).setOrigin(0.5);
-
-  scene.add.text(400, 280, 'Final Score: ' + scene.score, {
-    fontFamily: 'sans-serif',
-    fontSize: '24px',
-    fill: '#ffffff'
-  }).setOrigin(0.5);
-
-  const restartText = scene.add.text(
-    400,
-    340,
-    'Click anywhere to play again',
-    {
-      fontFamily: 'sans-serif',
-      fontSize: '20px',
-      fill: '#ffa500'
-    }
-  ).setOrigin(0.5);
-
-  scene.tweens.add({
-    targets: restartText,
-    alpha: 0.3,
-    duration: 800,
-    yoyo: true,
-    lopp: -1,
-  });
-
-  scene.input.once('pointerdown', () => {
-    scene.scene.restart();
-  });
+  showEndScreen(scene, "Victory", "Click anywhere to play again");
 }
