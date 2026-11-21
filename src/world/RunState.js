@@ -1,6 +1,7 @@
 import FloorRegistry from "./FloorRegistry.js";
+import RunProgressionContext from "../progression/RunProgressionContext.js";
 
-export const RUN_STATE_SCHEMA_VERSION = 1;
+export const RUN_STATE_SCHEMA_VERSION = 2;
 
 function assertJsonValue(value, label, ancestors = new WeakSet()) {
   if (
@@ -82,6 +83,7 @@ export default class RunState {
     floorConnections = [],
     playerStates = {},
     globalFlags = {},
+    progressionContext = null,
   } = {}) {
     if (typeof id !== "string" || id.trim() === "") {
       throw new TypeError("RunState requires a non-empty id.");
@@ -109,6 +111,9 @@ export default class RunState {
     });
     this.playerStates = new Map();
     this.globalFlags = cloneSerializable(globalFlags, "globalFlags");
+    this.progressionContext = progressionContext === null
+      ? new RunProgressionContext()
+      : RunProgressionContext.fromJSON(progressionContext);
 
     for (const [playerId, playerState] of Object.entries(playerStates)) {
       this.setPlayerState(playerId, playerState);
@@ -178,11 +183,36 @@ export default class RunState {
 
     this.currentFloorId = floorId;
     this.currentRoomId = roomId;
+    this.progressionContext.setLocation(floor.depth, floor.pathId ?? "default");
 
     return {
       floor,
       room: floor.getRoomDefinition(roomId),
     };
+  }
+
+  getProgressionContext() {
+    return this.progressionContext.toJSON();
+  }
+
+  setProgressionContext(input, { syncCurrentFloor = false } = {}) {
+    const next = input instanceof RunProgressionContext
+      ? RunProgressionContext.fromJSON(input.toJSON())
+      : RunProgressionContext.fromJSON(input);
+    if (syncCurrentFloor && this.currentFloorId) {
+      const currentFloor = this.getCurrentFloor();
+      next.setLocation(currentFloor.depth, currentFloor.pathId ?? "default");
+    }
+    // Mutate the existing context so systems holding its reference do not
+    // become detached when a run progression snapshot is restored/updated.
+    this.progressionContext.setLocation(next.depth, next.pathId);
+    this.progressionContext.setModifierIds(next.modifierIds);
+    return this.getProgressionContext();
+  }
+
+  setProgressionModifiers(modifierIds) {
+    this.progressionContext.setModifierIds(modifierIds);
+    return this.getProgressionContext();
   }
 
   markFloorCompleted(floorId) {
@@ -242,6 +272,7 @@ export default class RunState {
       currentFloorId: this.currentFloorId,
       currentRoomId: this.currentRoomId,
       floorRegistry: this.floorRegistry.toJSON(),
+      progressionContext: this.progressionContext.toJSON(),
       playerStates: Object.fromEntries(
         [...this.playerStates.entries()].map(([playerId, state]) => [
           playerId,
@@ -259,9 +290,9 @@ export default class RunState {
 
     const version = snapshot.schemaVersion ?? 1;
 
-    if (version !== RUN_STATE_SCHEMA_VERSION) {
+    if (version !== 1 && version !== RUN_STATE_SCHEMA_VERSION) {
       throw new Error(
-        `Unsupported RunState schema version "${version}". Expected ${RUN_STATE_SCHEMA_VERSION}.`
+        `Unsupported RunState schema version "${version}". Expected 1 or ${RUN_STATE_SCHEMA_VERSION}.`
       );
     }
 
@@ -279,6 +310,7 @@ export default class RunState {
       floorConnections: registrySnapshot.connections ?? [],
       playerStates: snapshot.playerStates ?? {},
       globalFlags: snapshot.globalFlags ?? {},
+      progressionContext: snapshot.progressionContext ?? null,
     });
   }
 }

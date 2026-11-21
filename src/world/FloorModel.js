@@ -35,7 +35,9 @@ export default class FloorModel {
     variantId = "default",
     generationVersion = 1,
     depth = 1,
+    pathId = "default",
     seed = null,
+    generationProfile = null,
     visited = false,
     visitCount = 0,
     completed = false,
@@ -59,6 +61,14 @@ export default class FloorModel {
     if (typeof variantId !== "string" || variantId.trim() === "") {
       throw new TypeError("FloorModel requires a non-empty variantId.");
     }
+    if (typeof pathId !== "string" || pathId.trim() === "") {
+      throw new TypeError("FloorModel requires a non-empty pathId.");
+    }
+    if (generationProfile !== null && (
+      typeof generationProfile !== "object" || Array.isArray(generationProfile)
+    )) {
+      throw new TypeError("FloorModel generationProfile must be an object or null.");
+    }
 
     assertPositiveInteger(generationVersion, "Floor generationVersion");
     assertPositiveInteger(depth, "Floor depth");
@@ -74,7 +84,11 @@ export default class FloorModel {
     this.variantId = variantId;
     this.generationVersion = generationVersion;
     this.depth = depth;
+    this.pathId = pathId;
     this.seed = seed;
+    this.generationProfile = generationProfile === null
+      ? null
+      : cloneSerializable(generationProfile);
     this.visited = Boolean(visited);
     this.visitCount = Number.isInteger(visitCount) && visitCount >= 0
       ? visitCount
@@ -434,7 +448,9 @@ export default class FloorModel {
       variantId: this.variantId,
       generationVersion: this.generationVersion,
       depth: this.depth,
+      pathId: this.pathId,
       seed: this.seed,
+      generationProfile: cloneSerializable(this.generationProfile),
       visited: this.visited,
       visitCount: this.visitCount,
       completed: this.completed,

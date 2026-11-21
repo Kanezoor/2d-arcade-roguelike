@@ -62,13 +62,27 @@ assert.deepEqual(
 const run = new RunState({
   id: "run-test-001",
   seed: 5150,
+  progressionContext: { depth: 2, pathId: "default", modifierIds: ["test-modifier"] },
   floors: [originalFloor],
 });
 
 assert.equal(run.getFloor(originalFloor.id), originalFloor);
 assert.equal(run.getCurrentFloor(), null);
 
+// Context can be prepared for a future floor/path without moving the current
+// player location; entering a generated floor then synchronizes actual depth/path.
+run.setProgressionContext({ depth: 3, pathId: "nature", modifierIds: ["test-modifier"] });
+assert.deepEqual(run.getProgressionContext(), {
+  depth: 3,
+  pathId: "nature",
+  modifierIds: ["test-modifier"],
+});
 run.setCurrentLocation(originalFloor.id, originalFloor.startRoomId);
+assert.deepEqual(run.getProgressionContext(), {
+  depth: originalFloor.depth,
+  pathId: originalFloor.pathId,
+  modifierIds: ["test-modifier"],
+});
 assert.equal(run.currentFloorId, originalFloor.id);
 assert.equal(run.currentRoomId, originalFloor.startRoomId);
 assert.equal(originalFloor.visited, true);
@@ -127,6 +141,8 @@ assert.equal(
 );
 
 run.setCurrentLocation(corruptedFloor.id, corruptedFloor.startRoomId);
+assert.equal(run.getProgressionContext().depth, corruptedFloor.depth);
+assert.equal(run.getProgressionContext().pathId, corruptedFloor.pathId);
 assert.equal(corruptedFloor.visitCount, 1);
 run.setCurrentLocation(originalFloor.id, originalFloor.startRoomId);
 assert.equal(originalFloor.visitCount, 2);
@@ -182,6 +198,7 @@ assert.deepEqual(
 assert.equal(restored.floorRegistry.getConnections().length, 2);
 assert.deepEqual(restored.getPlayerState("player-1"), run.getPlayerState("player-1"));
 assert.equal(restored.getGlobalFlag("catacombsPortalUnlocked"), true);
+assert.deepEqual(restored.getProgressionContext(), run.getProgressionContext());
 
 assert.throws(
   () => restored.addFloor(restored.getFloor(originalFloor.id)),
@@ -205,6 +222,17 @@ assert.throws(
   () => run.setPlayerState("player-2", { invalid: () => {} }),
   /JSON-serializable/
 );
+
+// Version-1 saves without progression data remain loadable and infer depth/path
+// from the saved current floor.
+const legacySnapshot = JSON.parse(JSON.stringify(run.toJSON()));
+legacySnapshot.schemaVersion = 1;
+delete legacySnapshot.progressionContext;
+const migratedLegacyRun = RunState.fromJSON(legacySnapshot);
+assert.equal(migratedLegacyRun.schemaVersion, RUN_STATE_SCHEMA_VERSION);
+assert.equal(migratedLegacyRun.getProgressionContext().depth, originalFloor.depth);
+assert.equal(migratedLegacyRun.getProgressionContext().pathId, originalFloor.pathId);
+assert.deepEqual(migratedLegacyRun.getProgressionContext().modifierIds, []);
 
 const standaloneRegistry = FloorRegistry.fromJSON(run.floorRegistry.toJSON());
 assert.equal(standaloneRegistry.getFloors().length, 2);

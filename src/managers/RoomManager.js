@@ -1,9 +1,11 @@
 import { spawnEnemy } from "./EnemyManager.js";
 import Boss from "../entities/Boss.js";
 import Reward from "../entities/Reward.js";
-import FloorGenerator from "../world/FloorGenerator.js";
+import FloorGenerator, { createRunSeed } from "../world/FloorGenerator.js";
 import FloorArchetype from "../world/FloorArchetype.js";
 import RunState from "../world/RunState.js";
+import RunProgressionContext from "../progression/RunProgressionContext.js";
+import { createDefaultProgressionProfileRegistry } from "../progression/ProgressionProfileRegistry.js";
 import {
   getExitForDirection,
   getOppositeDirection,
@@ -32,7 +34,8 @@ export default class RoomManager {
 
     this.currentRoom = 0;
 
-    // Archetypes are static game content; each generated floor is a separate instance.
+    // Archetypes provide stable world dimensions and common floor settings.
+    // Progression profiles now control shape, footprint, size and room-type mixes.
     this.floorArchetype = new FloorArchetype({
       id: "prototype-dungeon",
       name: "Prototype Dungeon",
@@ -43,30 +46,7 @@ export default class RoomManager {
         gridHeight: 7,
         roomWidth: 800,
         roomHeight: 800,
-        // Weights are relative probabilities, not percentages. A zero weight
-        // can be used to disable a template without removing it from the registry.
-        roomShape: "rectangle",
-        roomTemplateWeights: {
-          rectangle: 5,
-          square: 3,
-          octagon: 2,
-          diamond: 2,
-          circle: 1,
-        },
-        // Footprints reserve additional floor-grid cells and scale the room's
-        // world dimensions. The 1x1 option remains common enough to preserve
-        // compact combat rooms and keep the map from becoming too sparse.
-        roomFootprintWeights: {
-          "1x1": 8,
-          "2x1": 2,
-          "1x2": 2,
-          "2x2": 1,
-        },
-        roomSizeWeights: {
-          small: 1,
-          medium: 5,
-          large: 2,
-        },
+        roomShape: "square",
         background: 0xffffff,
       },
       variants: [
@@ -78,21 +58,33 @@ export default class RoomManager {
     const floorGenerationOptions = this.floorArchetype.resolveGenerationOptions(
       initialVariantId
     );
+    this.runSeed = createRunSeed();
+    this.runProgressionContext = new RunProgressionContext({
+      depth: 1,
+      pathId: "default",
+      modifierIds: [],
+    });
+    this.progressionProfileRegistry = createDefaultProgressionProfileRegistry();
 
-    this.floor = FloorGenerator.generate({
-      ...floorGenerationOptions,
+    this.floor = FloorGenerator.generateForProgression({
       id: "floor-instance-001",
+      runSeed: this.runSeed,
+      progressionContext: this.runProgressionContext,
+      profileRegistry: this.progressionProfileRegistry,
+      baseGenerationOptions: floorGenerationOptions,
       archetypeId: this.floorArchetype.id,
       variantId: initialVariantId,
-      generationVersion: 2,
-      depth: 1,
-      seed: null, // null creates a new random seed for each run.
+      generationVersion: 3,
     });
 
     this.runState = new RunState({
-      seed: this.floor.seed,
+      seed: this.runSeed,
+      progressionContext: this.runProgressionContext.toJSON(),
       floors: [this.floor],
     });
+
+    // Keep one authoritative progression context for future floor transitions.
+    this.runProgressionContext = this.runState.progressionContext;
 
     // The registry owns all floor instances for this run.
     this.floorRegistry = this.runState.floorRegistry;

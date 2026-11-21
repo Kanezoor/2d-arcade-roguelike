@@ -1,5 +1,6 @@
 import FloorModel from "./FloorModel.js";
 import { getRoomTemplate } from "./RoomTemplateRegistry.js";
+import RunProgressionContext from "../progression/RunProgressionContext.js";
 
 const DIRECTIONS = [
   { name: "north", dx: 0, dy: -1 },
@@ -34,6 +35,49 @@ function normalizeSeed(seed) {
   }
 
   throw new TypeError("seed must be a finite number, a non-empty string, or null.");
+}
+
+/** Create a stable root seed for a new run. */
+export function createRunSeed() {
+  if (globalThis.crypto?.getRandomValues) {
+    const values = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(values);
+    return values[0] >>> 0;
+  }
+  return Math.floor(Math.random() * 0x100000000) >>> 0;
+}
+
+/**
+ * Derive a floor-specific seed from the root run seed and its identity.
+ * Adding or generating another floor will not consume randomness from this one.
+ */
+export function deriveFloorSeed(runSeed, {
+  floorId,
+  depth,
+  pathId = "default",
+  modifierIds = [],
+} = {}) {
+  if (typeof floorId !== "string" || floorId.trim() === "") {
+    throw new TypeError("deriveFloorSeed requires a non-empty floorId.");
+  }
+  if (!Number.isInteger(depth) || depth < 1) {
+    throw new TypeError("deriveFloorSeed depth must be a positive integer.");
+  }
+  if (typeof pathId !== "string" || pathId.trim() === "") {
+    throw new TypeError("deriveFloorSeed pathId must be a non-empty string.");
+  }
+  if (!Array.isArray(modifierIds)) {
+    throw new TypeError("deriveFloorSeed modifierIds must be an array.");
+  }
+  const normalizedRunSeed = normalizeSeed(runSeed);
+  const normalizedModifiers = [...new Set(modifierIds)].sort().join(",");
+  return normalizeSeed([
+    normalizedRunSeed,
+    floorId,
+    depth,
+    pathId,
+    normalizedModifiers,
+  ].join("|"));
 }
 
 function createRandom(seed) {
@@ -301,7 +345,34 @@ function chooseWeightedEntry(entries, random) {
   return entries[entries.length - 1];
 }
 
-function chooseRoomTypes({ roomNodes, mainPathIds, random }) {
+function normalizeRoomTypeWeights(weights) {
+  if (weights == null) return null;
+  if (!weights || typeof weights !== "object" || Array.isArray(weights)) {
+    throw new TypeError("roomTypeWeights must map room type ids to non-negative weights.");
+  }
+  const entries = Object.keys(weights).sort().map(type => {
+    if (typeof type !== "string" || type.trim() === "") {
+      throw new TypeError("Room type ids must be non-empty strings.");
+    }
+    const weight = weights[type];
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new TypeError(`Room type weight for "${type}" must be a finite non-negative number.`);
+    }
+    return { type, weight };
+  }).filter(entry => entry.weight > 0);
+  if (entries.length === 0) {
+    throw new RangeError("roomTypeWeights must contain at least one positive weight.");
+  }
+  return entries;
+}
+
+function chooseRoomTypes({
+  roomNodes,
+  mainPathIds,
+  random,
+  roomTypeWeights = null,
+  guaranteedRoomTypes = ["treasure", "shop"],
+}) {
   const typesById = new Map();
   const startNode = roomNodes[0];
   const bossNode = roomNodes.find(node => node.isBossRoom);
@@ -314,41 +385,53 @@ function chooseRoomTypes({ roomNodes, mainPathIds, random }) {
     node.id !== startNode.id &&
     node.id !== bossNode.id
   ));
-
   const mainPathCandidates = roomNodes.filter(node => (
     mainPathIds.has(node.id) &&
     node.id !== startNode.id &&
     node.id !== bossNode.id
   ));
+  const available = [
+    ...shuffle(branchNodes, random),
+    ...shuffle(mainPathCandidates, random),
+  ];
 
-  const branchPool = shuffle(branchNodes, random);
-  const fallbackPool = shuffle(mainPathCandidates, random);
-  const available = [...branchPool, ...fallbackPool];
+  // Legacy callers retain the original room-type assignment behavior.
+  const weightedTypes = Array.isArray(roomTypeWeights)
+    ? roomTypeWeights
+    : normalizeRoomTypeWeights(roomTypeWeights);
+  if (!weightedTypes) {
+    const treasureNode = available.shift();
+    const shopNode = available.shift();
+    if (treasureNode) typesById.set(treasureNode.id, "treasure");
+    if (shopNode) typesById.set(shopNode.id, "shop");
+    if (available.length > 0 && roomNodes.length >= 12 && random() < 0.35) {
+      typesById.set(available.shift().id, "special");
+    }
+  } else {
+    if (!Array.isArray(guaranteedRoomTypes) || guaranteedRoomTypes.some(type => (
+      typeof type !== "string" || type.trim() === ""
+    ))) {
+      throw new TypeError("guaranteedRoomTypes must be an array of non-empty room type ids.");
+    }
+    const weightedIds = new Set(weightedTypes.map(entry => entry.type));
+    for (const type of guaranteedRoomTypes) {
+      if (!weightedIds.has(type)) {
+        throw new Error(`Guaranteed room type "${type}" must have a positive roomTypeWeights entry.`);
+      }
+      const node = available.shift();
+      if (!node) break;
+      typesById.set(node.id, type);
+    }
 
-  // Ensure each generated floor has at least one optional reward room and one shop.
-  const treasureNode = available.shift();
-  const shopNode = available.shift();
-
-  if (treasureNode) {
-    typesById.set(treasureNode.id, "treasure");
-  }
-
-  if (shopNode) {
-    typesById.set(shopNode.id, "shop");
-  }
-
-  // A special room is an occasional extra, not a guaranteed room type.
-  if (available.length > 0 && roomNodes.length >= 12 && random() < 0.35) {
-    const specialNode = available.shift();
-    typesById.set(specialNode.id, "special");
-  }
-
-  for (const node of roomNodes) {
-    if (!typesById.has(node.id)) {
-      typesById.set(node.id, "combat");
+    while (available.length > 0) {
+      const node = available.shift();
+      typesById.set(node.id, chooseWeightedEntry(weightedTypes, random).type);
     }
   }
 
+  for (const node of roomNodes) {
+    if (!typesById.has(node.id)) typesById.set(node.id, "combat");
+  }
   return typesById;
 }
 
@@ -360,13 +443,73 @@ function chooseRoomTypes({ roomNodes, mainPathIds, random }) {
  * does not create Phaser objects, enemy instances, or Matter bodies.
  */
 export default class FloorGenerator {
+  /**
+   * Resolve the run's progression profile and generate a deterministically
+   * seeded floor. Existing generate() callers remain fully supported.
+   */
+  static generateForProgression({
+    id = "floor-1",
+    runSeed,
+    progressionContext,
+    profileRegistry,
+    baseGenerationOptions = {},
+    generationOverrides = {},
+    archetypeId = "default",
+    variantId = "default",
+    generationVersion = 1,
+  } = {}) {
+    if (!profileRegistry || typeof profileRegistry.resolve !== "function") {
+      throw new TypeError("generateForProgression requires a profileRegistry with a resolve() method.");
+    }
+    if (runSeed == null) {
+      throw new TypeError("generateForProgression requires a stable runSeed.");
+    }
+    const context = progressionContext instanceof RunProgressionContext
+      ? progressionContext
+      : RunProgressionContext.fromJSON(progressionContext ?? {});
+    const resolvedProfile = profileRegistry.resolve(context.toJSON());
+    const floorSeed = deriveFloorSeed(runSeed, {
+      floorId: id,
+      depth: context.depth,
+      pathId: context.pathId,
+      modifierIds: context.modifierIds,
+    });
+
+    // The resolved stage/path/modifier profile takes precedence over the
+    // archetype defaults. Explicit generationOverrides are a final escape hatch
+    // for a deliberately customized floor instance.
+    const generationOptions = {
+      ...baseGenerationOptions,
+      ...resolvedProfile.generationOptions,
+      ...generationOverrides,
+    };
+
+    return FloorGenerator.generate({
+      ...generationOptions,
+      id,
+      archetypeId,
+      variantId,
+      generationVersion,
+      depth: context.depth,
+      pathId: context.pathId,
+      seed: floorSeed,
+      generationProfile: {
+        ...resolvedProfile,
+        runSeed: normalizeSeed(runSeed),
+        floorSeed,
+      },
+    });
+  }
+
   static generate({
     id = "floor-1",
     archetypeId = "default",
     variantId = "default",
     generationVersion = 1,
     depth = 1,
+    pathId = "default",
     seed = null,
+    generationProfile = null,
     minRooms = 10,
     maxRooms = 15,
     roomCount = null,
@@ -381,10 +524,16 @@ export default class FloorGenerator {
     roomFootprintWeights = null,
     roomSizeWeights = null,
     roomSizeScales = null,
+    roomTypeWeights = null,
+    guaranteedRoomTypes = ["treasure", "shop"],
     background = 0xffffff,
   } = {}) {
     if (typeof id !== "string" || id.trim() === "") {
       throw new TypeError("FloorGenerator requires a non-empty floor id.");
+    }
+
+    if (typeof pathId !== "string" || pathId.trim() === "") {
+      throw new TypeError("pathId must be a non-empty string.");
     }
 
     assertIntegerInRange(depth, 1, Number.MAX_SAFE_INTEGER, "depth");
@@ -413,6 +562,7 @@ export default class FloorGenerator {
     );
     const normalizedFootprintWeights = normalizeFootprintWeights(roomFootprintWeights);
     const normalizedRoomSizeWeights = normalizeRoomSizeWeights(roomSizeWeights, roomSizeScales);
+    const normalizedRoomTypeWeights = normalizeRoomTypeWeights(roomTypeWeights);
     const actualSeed = normalizeSeed(seed);
     const random = createRandom(actualSeed);
     const targetRoomCount = roomCount ?? randomInteger(minRooms, maxRooms, random);
@@ -531,6 +681,8 @@ export default class FloorGenerator {
       roomNodes,
       mainPathIds: mainPathRoomIds,
       random,
+      roomTypeWeights: normalizedRoomTypeWeights,
+      guaranteedRoomTypes,
     });
 
     const rooms = roomNodes.map(node => {
@@ -565,7 +717,9 @@ export default class FloorGenerator {
       variantId,
       generationVersion,
       depth,
+      pathId,
       seed: actualSeed,
+      generationProfile,
       gridWidth,
       gridHeight,
       rooms,
