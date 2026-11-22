@@ -1,6 +1,7 @@
 import FloorModel from "./FloorModel.js";
 import { getRoomTemplate } from "./RoomTemplateRegistry.js";
 import RunProgressionContext from "../progression/RunProgressionContext.js";
+import { createDefaultRoomLayoutRegistry } from "./RoomLayoutRegistry.js";
 
 const DIRECTIONS = [
   { name: "north", dx: 0, dy: -1 },
@@ -454,6 +455,7 @@ export default class FloorGenerator {
     profileRegistry,
     baseGenerationOptions = {},
     generationOverrides = {},
+    roomLayoutRegistry = createDefaultRoomLayoutRegistry(),
     archetypeId = "default",
     variantId = "default",
     generationVersion = 1,
@@ -498,6 +500,9 @@ export default class FloorGenerator {
         runSeed: normalizeSeed(runSeed),
         floorSeed,
       },
+      roomLayoutRegistry,
+      roomLayoutPoolId: resolvedProfile.contentPools.roomLayoutPoolId ?? "starter",
+      obstaclePoolId: resolvedProfile.contentPools.obstaclePoolId ?? null,
     });
   }
 
@@ -510,6 +515,10 @@ export default class FloorGenerator {
     pathId = "default",
     seed = null,
     generationProfile = null,
+    roomLayoutRegistry = createDefaultRoomLayoutRegistry(),
+    roomLayoutPoolId = "starter",
+    obstaclePoolId = null,
+    roomLayoutValidationOptions = {},
     minRooms = 10,
     maxRooms = 15,
     roomCount = null,
@@ -711,7 +720,7 @@ export default class FloorGenerator {
 
     const startRoom = roomNodes.find(node => node.isStartRoom);
 
-    return new FloorModel({
+    const floor = new FloorModel({
       id,
       archetypeId,
       variantId,
@@ -727,5 +736,32 @@ export default class FloorGenerator {
       startRoomId: startRoom.id,
       bossRoomId: bossNode.id,
     });
+
+    if (!roomLayoutRegistry || typeof roomLayoutRegistry.selectForRoom !== "function") {
+      throw new TypeError("roomLayoutRegistry must provide selectForRoom().");
+    }
+    if (typeof roomLayoutPoolId !== "string" || !roomLayoutPoolId.trim()) {
+      throw new TypeError("roomLayoutPoolId must be a non-empty string.");
+    }
+
+    // Layout selection uses independent per-room seeds. It cannot shift the
+    // random stream used to build the floor graph, room types or footprints.
+    for (const room of floor.rooms.values()) {
+      const roomLayoutSeed = deriveFloorSeed(actualSeed, {
+        floorId: `${id}:${room.id}:layout`,
+        depth,
+        pathId,
+        modifierIds: [],
+      });
+      const assignment = roomLayoutRegistry.selectForRoom(room, {
+        poolId: roomLayoutPoolId,
+        obstaclePoolId,
+        seed: roomLayoutSeed,
+        validationOptions: roomLayoutValidationOptions,
+      });
+      room.setRoomLayout(assignment);
+    }
+
+    return floor;
   }
 }

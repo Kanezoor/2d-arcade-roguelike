@@ -139,6 +139,12 @@ export default class FloorModel {
 
     this.ensurePortsForConnections();
 
+    // Saved layout assignments are checked after connection ports are restored,
+    // so obstacle clearances are validated against the actual room entrances.
+    for (const room of this.rooms.values()) {
+      if (room.roomLayout) room.assertValidRoomLayout();
+    }
+
     this.startRoomId = startRoomId ?? (
       [...this.rooms.values()].find(room => room.isStartRoom)?.id ??
       [...this.rooms.keys()][0]
