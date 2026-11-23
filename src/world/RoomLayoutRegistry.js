@@ -413,6 +413,63 @@ export function createDefaultRoomLayoutRegistry() {
         metadata: { intent: "staggered-cover" },
       },
       {
+        id: "broken_stone_walls",
+        name: "Broken Stone Walls",
+        description: "Short broken wall segments create cover while preserving central and entrance routes.",
+        poolWeights: { starter: 0, intermediate: 0, complex: 1 },
+        allowedRoomTypes: ["combat"],
+        minimumSizeTier: "medium",
+        variants: [
+          {
+            id: "offset-pair",
+            weight: 1,
+            placements: [
+              { id: "wall-a", definitionId: "stone_wall_segment", x: 0.28, y: 0.28, width: 0.18, height: 0.045, rotation: 0.42, obstaclePools: ["dangerous"] },
+              { id: "wall-b", definitionId: "stone_wall_segment", x: 0.72, y: 0.72, width: 0.18, height: 0.045, rotation: -0.42, obstaclePools: ["dangerous"] },
+            ],
+          },
+        ],
+        metadata: { intent: "partial-wall-cover" },
+      },
+      {
+        id: "pit_pair",
+        name: "Pit Pair",
+        description: "Two floor pits create optional dangerous shortcuts while keeping the center and entrances clear.",
+        poolWeights: { starter: 0, intermediate: 0, complex: 1 },
+        allowedRoomTypes: ["combat"],
+        minimumSizeTier: "medium",
+        variants: [
+          {
+            id: "diagonal-a",
+            weight: 1,
+            placements: [
+              { id: "pit-a", definitionId: "pit", x: 0.32, y: 0.32, width: 0.11, height: 0.11, obstaclePools: ["dangerous"] },
+              { id: "pit-b", definitionId: "pit", x: 0.68, y: 0.68, width: 0.11, height: 0.11, obstaclePools: ["dangerous"] },
+            ],
+          },
+        ],
+        metadata: { intent: "floor-hazards" },
+      },
+      {
+        id: "spike_patches",
+        name: "Spike Patches",
+        description: "Small floor traps create dangerous zones away from the main entrance approaches.",
+        poolWeights: { starter: 0, intermediate: 0, complex: 1 },
+        allowedRoomTypes: ["combat"],
+        minimumSizeTier: "medium",
+        variants: [
+          {
+            id: "offset-pair",
+            weight: 1,
+            placements: [
+              { id: "spikes-a", definitionId: "spike_trap", x: 0.32, y: 0.68, width: 0.10, height: 0.10, obstaclePools: ["dangerous"] },
+              { id: "spikes-b", definitionId: "spike_trap", x: 0.68, y: 0.32, width: 0.10, height: 0.10, obstaclePools: ["dangerous"] },
+            ],
+          },
+        ],
+        metadata: { intent: "contact-hazards" },
+      },
+      {
         id: "dense_cover",
         name: "Dense Cover",
         description: "A denser arrangement for large rooms and later progression.",

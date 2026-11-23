@@ -2,6 +2,59 @@ import DamageContext from "../combat/DamageContext.js";
 import DamageSystem from "../combat/DamageSystem.js";
 import DamageType from "../combat/DamageType.js";
 
+function rayBoundsDistance(originX, originY, directionX, directionY, maxDistance, bounds) {
+  let minimum = 0;
+  let maximum = maxDistance;
+  const axes = [
+    { origin: originX, direction: directionX, min: bounds.x, max: bounds.x + bounds.width },
+    { origin: originY, direction: directionY, min: bounds.y, max: bounds.y + bounds.height },
+  ];
+
+  for (const axis of axes) {
+    if (Math.abs(axis.direction) < 1e-9) {
+      if (axis.origin < axis.min || axis.origin > axis.max) return null;
+      continue;
+    }
+    let first = (axis.min - axis.origin) / axis.direction;
+    let second = (axis.max - axis.origin) / axis.direction;
+    if (first > second) [first, second] = [second, first];
+    minimum = Math.max(minimum, first);
+    maximum = Math.min(maximum, second);
+    if (maximum < minimum) return null;
+  }
+
+  if (maximum < 0 || minimum > maxDistance) return null;
+  return Math.max(0, minimum);
+}
+
+/** Returns the first point where a beam reaches any blocking environment object. */
+export function getBeamEndPoint(startX, startY, angle, range, obstacles = []) {
+  const directionX = Math.cos(angle);
+  const directionY = Math.sin(angle);
+  let nearestDistance = range;
+  let blockingObject = null;
+
+  for (const obstacle of obstacles) {
+    if (!obstacle || obstacle.active === false || !obstacle.environmentalObject?.blocksProjectiles ||
+        typeof obstacle.getBounds !== "function") continue;
+    const distance = rayBoundsDistance(
+      startX, startY, directionX, directionY, range, obstacle.getBounds()
+    );
+    if (distance !== null && distance > 2 && distance < nearestDistance) {
+      nearestDistance = distance;
+      blockingObject = obstacle;
+    }
+  }
+
+  const endDistance = Math.max(0, nearestDistance - (blockingObject ? 2 : 0));
+  return {
+    x: startX + directionX * endDistance,
+    y: startY + directionY * endDistance,
+    distance: endDistance,
+    blockingObject,
+  };
+}
+
 export default class Beam {
   constructor(scene, owner, damage = 1, range = 500) {
     this.scene = scene;
@@ -40,8 +93,10 @@ export default class Beam {
       pointer.worldY
     );
 
-    const endX = startX + Math.cos(angle) * this.range;
-    const endY = startY + Math.sin(angle) * this.range;
+    const environmentObjects = this.scene.roomManager?.roomEnvironment?.getGameObjects?.() ?? [];
+    const beamEnd = getBeamEndPoint(startX, startY, angle, this.range, environmentObjects);
+    const endX = beamEnd.x;
+    const endY = beamEnd.y;
 
     this.graphics.lineStyle(
       8,

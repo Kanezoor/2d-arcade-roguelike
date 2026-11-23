@@ -4,6 +4,17 @@ import DamageContext from "../combat/DamageContext.js";
 import DamageType from "../combat/DamageType.js";
 import { isPointInsideRoom } from "../world/RoomGeometry.js";
 
+export function isSpawnPositionClear(scene, x, y, padding = 42) {
+  const objects = scene.roomManager?.roomEnvironment?.getGameObjects?.() ?? [];
+  return objects.every(object => {
+    const environmentalObject = object.environmentalObject;
+    if (!environmentalObject?.blocksMovement || typeof object.getBounds !== "function") return true;
+    const bounds = object.getBounds();
+    const nearestX = Math.max(bounds.x, Math.min(x, bounds.x + bounds.width));
+    const nearestY = Math.max(bounds.y, Math.min(y, bounds.y + bounds.height));
+    return Math.hypot(x - nearestX, y - nearestY) >= padding;
+  });
+}
 
 export function createEnemies(scene) {
 
@@ -32,12 +43,18 @@ export function spawnEnemy(scene, enemyType = null) {
     );
     attempts += 1;
   } while (
-    (dist < safeRadius || !isPointInsideRoom(room, rx, ry, 36)) &&
+    (dist < safeRadius ||
+      !isPointInsideRoom(room, rx, ry, 36) ||
+      !isSpawnPositionClear(scene, rx, ry, 42)) &&
     attempts < 500
   );
 
-  // Keep a safe fallback for unusually small/custom room geometries.
-  if (!isPointInsideRoom(room, rx, ry, 20)) {
+  // Keep a safe fallback for unusually small/custom room geometries. The
+  // validated room-layout system preserves the center as a clear area.
+  if (
+    !isPointInsideRoom(room, rx, ry, 20) ||
+    !isSpawnPositionClear(scene, rx, ry, 36)
+  ) {
     rx = room.width / 2;
     ry = room.height / 2;
   }

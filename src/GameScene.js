@@ -282,6 +282,33 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Static environmental cover blocks both player and enemy projectiles.
+    if (objectA.projectile && objectB.environmentalObject?.blocksProjectiles) {
+      this.handleProjectileEnvironmentalCollision(objectA);
+      return;
+    }
+    if (objectB.projectile && objectA.environmentalObject?.blocksProjectiles) {
+      this.handleProjectileEnvironmentalCollision(objectB);
+      return;
+    }
+
+    if (objectA === this.player.sprite && objectB.environmentalObject?.hazard) {
+      this.handleEnvironmentalHazardContact(objectB, this.player.sprite);
+      return;
+    }
+    if (objectB === this.player.sprite && objectA.environmentalObject?.hazard) {
+      this.handleEnvironmentalHazardContact(objectA, this.player.sprite);
+      return;
+    }
+    if (objectA.enemy && objectB.environmentalObject?.hazard) {
+      this.handleEnvironmentalHazardContact(objectB, objectA);
+      return;
+    }
+    if (objectB.enemy && objectA.environmentalObject?.hazard) {
+      this.handleEnvironmentalHazardContact(objectA, objectB);
+      return;
+    }
+
     if (
       objectA === this.player.sprite &&
       objectB.enemy
@@ -380,6 +407,44 @@ export class GameScene extends Phaser.Scene {
     if (objectB.projectile && objectA.boss) {
       this.handleProjectileBossHit(objectB, objectA);
     }
+  }
+
+  handleProjectileEnvironmentalCollision(projectileSprite) {
+    if (!projectileSprite || projectileSprite.active === false) return;
+    projectileSprite.destroy();
+  }
+
+  handleEnvironmentalHazardContact(hazardSprite, targetSprite) {
+    const environmentalObject = hazardSprite?.environmentalObject;
+    const hazard = environmentalObject?.hazard;
+    if (!hazard || !targetSprite || this.isGameOver) return false;
+
+    const isPlayer = targetSprite === this.player?.sprite;
+    const isEnemy = Boolean(targetSprite.enemy);
+    const targetKind = isPlayer ? "player" : (isEnemy ? "enemy" : null);
+    if (!targetKind || !hazard.affects.includes(targetKind) || hazard.damage <= 0) return false;
+
+    const target = isPlayer ? this.player : targetSprite.enemy;
+    const now = this.time.now;
+    const lastContactAt = environmentalObject.lastContactAt?.get(targetSprite) ?? -Infinity;
+    if (now - lastContactAt < hazard.cooldownMs) return false;
+    environmentalObject.lastContactAt?.set(targetSprite, now);
+
+    const died = DamageSystem.apply(new DamageContext({
+      source: hazardSprite,
+      target,
+      baseDamage: hazard.damage,
+      type: DamageType.PHYSICAL,
+      hitX: hazardSprite.x,
+      hitY: hazardSprite.y,
+      knockBackStrength: 0,
+    }));
+
+    if (isPlayer && died) {
+      this.matter.world.pause();
+      showGameOverScreen(this);
+    }
+    return true;
   }
 
   handleEnemyContact(enemySprite, applyHitReaction = true) {

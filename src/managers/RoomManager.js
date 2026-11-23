@@ -23,6 +23,8 @@ import { getRoomOutlinePoints } from "../world/RoomGeometry.js";
 import { assertValidRoomPortLayout } from "../world/RoomPortLayoutValidator.js";
 import RoomTransitionController from "../world/RoomTransitionController.js";
 import { getRoomCameraLayout } from "../world/RoomCameraLayout.js";
+import RoomEnvironmentRuntime from "../world/RoomEnvironmentRuntime.js";
+import { createDefaultEnvironmentalObjectRegistry } from "../world/EnvironmentalObjectRegistry.js";
 
 export default class RoomManager {
   constructor(scene) {
@@ -116,6 +118,8 @@ export default class RoomManager {
     this.isDoorOpen = false;
     this.isEncounterActive = true;
     this.roomFloorGraphics = null;
+    this.environmentObjectRegistry = createDefaultEnvironmentalObjectRegistry();
+    this.roomEnvironment = null;
   }
 
   start() {
@@ -185,6 +189,7 @@ export default class RoomManager {
 
     // Remove runtime objects belonging to the previous room.
     this.clearDoors();
+    this.clearRoomEnvironment();
     this.clearRoomWalls();
     this.clearRoomFloor();
     this.clearRewards();
@@ -227,6 +232,7 @@ export default class RoomManager {
 
     this.configureRoomCamera(room);
     this.createExitDoors();
+    this.createRoomEnvironment(room);
 
     if (this.isBossRoom) {
       this.startBossRoom();
@@ -712,6 +718,27 @@ export default class RoomManager {
     if (shape === "circle") {
       this.createCircularBoundry();
     }
+  }
+
+  createRoomEnvironment(room = this.currentRoomData) {
+    this.clearRoomEnvironment();
+    if (!room?.roomLayout?.placements?.length) return null;
+
+    const report = room.validateRoomLayout?.();
+    if (report && !report.valid) {
+      console.warn(`Skipping invalid room environment for "${room.id}":`, report.errors);
+      return null;
+    }
+
+    this.roomEnvironment = new RoomEnvironmentRuntime(this.scene, room, {
+      registry: this.environmentObjectRegistry,
+    });
+    return this.roomEnvironment;
+  }
+
+  clearRoomEnvironment() {
+    this.roomEnvironment?.destroy();
+    this.roomEnvironment = null;
   }
 
   clearRoomWalls() {
