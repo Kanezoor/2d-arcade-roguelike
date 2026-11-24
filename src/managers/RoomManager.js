@@ -232,7 +232,7 @@ export default class RoomManager {
 
     this.configureRoomCamera(room);
     this.createExitDoors();
-    this.createRoomEnvironment(room);
+    this.createRoomEnvironment(room, roomState);
 
     if (this.isBossRoom) {
       this.startBossRoom();
@@ -720,7 +720,7 @@ export default class RoomManager {
     }
   }
 
-  createRoomEnvironment(room = this.currentRoomData) {
+  createRoomEnvironment(room = this.currentRoomData, roomState = this.floor?.getRoomState(room?.id)) {
     this.clearRoomEnvironment();
     if (!room?.roomLayout?.placements?.length) return null;
 
@@ -732,6 +732,7 @@ export default class RoomManager {
 
     this.roomEnvironment = new RoomEnvironmentRuntime(this.scene, room, {
       registry: this.environmentObjectRegistry,
+      roomState,
     });
     return this.roomEnvironment;
   }
@@ -739,6 +740,14 @@ export default class RoomManager {
   clearRoomEnvironment() {
     this.roomEnvironment?.destroy();
     this.roomEnvironment = null;
+  }
+
+  damageEnvironmentalObject(gameObject, damageContext) {
+    return this.roomEnvironment?.applyDamageToObject(gameObject, damageContext) ?? {
+      applied: false,
+      destroyed: false,
+      damage: 0,
+    };
   }
 
   clearRoomWalls() {

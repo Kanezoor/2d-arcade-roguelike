@@ -39,6 +39,11 @@ export default class RoomState {
       && !Array.isArray(snapshot.gateStates)
       ? cloneSerializable(snapshot.gateStates)
       : {};
+    this.environmentObjectStates = snapshot.environmentObjectStates &&
+      typeof snapshot.environmentObjectStates === "object" &&
+      !Array.isArray(snapshot.environmentObjectStates)
+      ? cloneSerializable(snapshot.environmentObjectStates)
+      : {};
     this.customData = snapshot.customData && typeof snapshot.customData === "object"
       ? cloneSerializable(snapshot.customData)
       : {};
@@ -118,6 +123,41 @@ export default class RoomState {
     return true;
   }
 
+  getEnvironmentalObjectState(placementId) {
+    if (typeof placementId !== "string" || placementId.trim() === "") {
+      throw new TypeError("Environmental object state requires a non-empty placementId.");
+    }
+    const state = this.environmentObjectStates[placementId];
+    return state ? cloneSerializable(state) : null;
+  }
+
+  setEnvironmentalObjectState(placementId, state) {
+    if (typeof placementId !== "string" || placementId.trim() === "") {
+      throw new TypeError("Environmental object state requires a non-empty placementId.");
+    }
+    if (!state || typeof state !== "object" || Array.isArray(state)) {
+      throw new TypeError("Environmental object state must be an object.");
+    }
+    if (!Number.isFinite(state.health) || state.health < 0 ||
+        !Number.isFinite(state.maxHealth) || state.maxHealth <= 0) {
+      throw new TypeError("Environmental object state requires valid health and maxHealth values.");
+    }
+    this.environmentObjectStates[placementId] = {
+      definitionId: typeof state.definitionId === "string" ? state.definitionId : null,
+      health: Math.min(state.health, state.maxHealth),
+      maxHealth: state.maxHealth,
+      destroyed: Boolean(state.destroyed || state.health <= 0),
+    };
+    return this.getEnvironmentalObjectState(placementId);
+  }
+
+  clearEnvironmentalObjectState(placementId) {
+    if (typeof placementId !== "string" || placementId.trim() === "") return false;
+    if (!Object.prototype.hasOwnProperty.call(this.environmentObjectStates, placementId)) return false;
+    delete this.environmentObjectStates[placementId];
+    return true;
+  }
+
   recordCollectedReward(rewardId) {
     if (rewardId == null || this.collectedRewardIds.includes(rewardId)) {
       return false;
@@ -139,6 +179,7 @@ export default class RoomState {
       collectedItemIds: [...this.collectedItemIds],
       collectedRewardIds: [...this.collectedRewardIds],
       gateStates: cloneSerializable(this.gateStates),
+      environmentObjectStates: cloneSerializable(this.environmentObjectStates),
       customData: cloneSerializable(this.customData),
     };
   }

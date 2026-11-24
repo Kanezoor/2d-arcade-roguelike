@@ -1,3 +1,5 @@
+import DamageType from "../combat/DamageType.js";
+
 
 export default class Projectile {
   constructor(
@@ -16,6 +18,7 @@ export default class Projectile {
     hitPushDuration = 0,
     hitStunDuration = 0,
     penetrationSpeedRetention = 0.85,
+    damageType = DamageType.KINETIC,
   ) {
     this.scene = scene;
     this.owner = owner;
@@ -55,6 +58,7 @@ export default class Projectile {
     this.remainingHits = this.isPiercing ? 2 : 1;
 
     this.team = team;
+    this.damageType = damageType;
     this.hitReactionDistance = hitReactionDistance;
     this.hitPushDuration = hitPushDuration;
     this.hitStunDuration = hitStunDuration;
@@ -70,6 +74,7 @@ export default class Projectile {
     this.sprite.isPiercing = this.isPiercing;
     this.sprite.owner = owner;
     this.sprite.team = team;
+    this.sprite.damageType = damageType;
     this.sprite.hitReactionDistance = this.hitReactionDistance;
     this.sprite.hitPushDuration = this.hitPushDuration;
     this.sprite.hitStunDuration = this.hitStunDuration;

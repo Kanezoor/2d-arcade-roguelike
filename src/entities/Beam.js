@@ -65,6 +65,7 @@ export default class Beam {
     this.graphics = scene.add.graphics();
     this.damageInterval = 200;
     this.lastDamageTimes = new Map();
+    this.lastEnvironmentDamageTimes = new Map();
   }
 
   start() {
@@ -97,6 +98,23 @@ export default class Beam {
     const beamEnd = getBeamEndPoint(startX, startY, angle, this.range, environmentObjects);
     const endX = beamEnd.x;
     const endY = beamEnd.y;
+
+    // A continuous laser can damage destructible cover at the beam's first impact point.
+    if (beamEnd.blockingObject?.environmentalObject?.destructible) {
+      const now = this.scene.time.now;
+      const lastDamageTime = this.lastEnvironmentDamageTimes.get(beamEnd.blockingObject) ?? -Infinity;
+      if (now - lastDamageTime >= this.damageInterval) {
+        this.lastEnvironmentDamageTimes.set(beamEnd.blockingObject, now);
+        this.scene.roomManager?.damageEnvironmentalObject(beamEnd.blockingObject, {
+          source: this,
+          target: beamEnd.blockingObject,
+          baseDamage: this.damage,
+          type: DamageType.LASER,
+          hitX: endX,
+          hitY: endY,
+        });
+      }
+    }
 
     this.graphics.lineStyle(
       8,

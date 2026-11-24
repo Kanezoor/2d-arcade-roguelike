@@ -152,6 +152,12 @@ assert.equal(originalFloor.completed, true);
 
 const persistentRoomState = originalFloor.getRoomState(originalFloor.startRoomId);
 persistentRoomState.recordDefeatedEnemy("enemy-guard-01");
+persistentRoomState.setEnvironmentalObjectState("pillar-nw", {
+  definitionId: "stone_pillar",
+  health: 7.5,
+  maxHealth: 18,
+  destroyed: false,
+});
 persistentRoomState.addDroppedItem({
   id: "world-item-01",
   definitionId: "shotgun",
@@ -178,6 +184,12 @@ assert.equal(restored.schemaVersion, RUN_STATE_SCHEMA_VERSION);
 assert.equal(restored.currentFloorId, originalFloor.id);
 assert.equal(restored.currentRoomId, originalFloor.startRoomId);
 assert.equal(restored.getFloor(originalFloor.id).variantId, "original");
+assert.deepEqual(
+  restored.getFloor(originalFloor.id).getRoomState(originalFloor.startRoomId)
+    .getEnvironmentalObjectState("pillar-nw"),
+  { definitionId: "stone_pillar", health: 7.5, maxHealth: 18, destroyed: false },
+  "environment object damage should survive complete run save/load",
+);
 assert.equal(restored.getFloor(corruptedFloor.id).variantId, "corrupted");
 assert.equal(restored.getFloor(originalFloor.id).completed, true);
 assert.equal(restored.getFloor(originalFloor.id).visitCount, 2);

@@ -1,5 +1,6 @@
 import FireModeFactory from "./firemodes/FireModeFactory.js";
 import Projectile from "../entities/Projectile.js";
+import DamageType from "../combat/DamageType.js";
 const PROJECTILE_REFERENCE_SPEED = 5;
 const MAX_MODULE_SLOTS = 10;
 
@@ -258,6 +259,7 @@ export default class Weapon {
       hitPushDuration,
       hitStunDuration,
       this.stats.penetrationSpeedRetention,
+      this.stats.environmentDamageType ?? DamageType.KINETIC,
     );
 
     this.onProjectileCreated(projectile);

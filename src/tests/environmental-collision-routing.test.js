@@ -24,9 +24,26 @@ const projectile = {
   projectile: {},
   destroy() { projectileDestroyed = true; this.active = false; },
 };
-const solidCover = { environmentalObject: { blocksProjectiles: true } };
+const appliedEnvironmentalHits = [];
+scene.roomManager = {
+  damageEnvironmentalObject(target, context) {
+    appliedEnvironmentalHits.push({ target, context });
+    return { applied: true };
+  },
+};
+projectile.team = "player";
+projectile.damage = 3;
+projectile.projectile = {
+  getImpactDamage: () => 3,
+  damageType: "kinetic",
+};
+const solidCover = { environmentalObject: { blocksProjectiles: true, destructible: true } };
 scene.handleMatterCollision({ bodyA: { gameObject: projectile }, bodyB: { gameObject: solidCover } });
-assert.equal(projectileDestroyed, true, "projectiles should be consumed by solid cover");
+assert.equal(projectileDestroyed, true, "projectiles should still be consumed by solid cover");
+assert.equal(appliedEnvironmentalHits.length, 1, "player kinetic projectiles should damage destructible cover");
+assert.equal(appliedEnvironmentalHits[0].target, solidCover);
+assert.equal(appliedEnvironmentalHits[0].context.baseDamage, 3);
+assert.equal(appliedEnvironmentalHits[0].context.type, "kinetic");
 
 const hazard = {
   x: 240,

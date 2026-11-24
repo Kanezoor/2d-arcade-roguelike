@@ -8,10 +8,24 @@ function isValidPlacement(placement) {
     placement.width > 0 && placement.height > 0;
 }
 
+function mergeVisual(base, override = {}) {
+  return { ...base, ...override };
+}
+
+function visualForState(definition, health, maxHealth, destroyed) {
+  const destructible = definition.destructible;
+  if (!destructible) return { ...definition.visual };
+  if (destroyed) return mergeVisual(definition.visual, destructible.destroyedVisual);
+  const ratio = maxHealth > 0 ? health / maxHealth : 1;
+  const stage = destructible.stages.find(candidate => ratio <= candidate.healthRatioBelow);
+  return stage ? mergeVisual(definition.visual, stage.visual) : { ...definition.visual };
+}
+
 /** Creates and owns the Phaser/Matter representation of a saved room layout. */
 export default class RoomEnvironmentRuntime {
   constructor(scene, room, {
     registry = createDefaultEnvironmentalObjectRegistry(),
+    roomState = null,
     onWarning = message => console.warn(message),
   } = {}) {
     if (!scene || !scene.add || !scene.matter?.add?.gameObject) {
@@ -23,13 +37,38 @@ export default class RoomEnvironmentRuntime {
     this.scene = scene;
     this.room = room;
     this.registry = registry;
+    this.roomState = roomState;
     this.onWarning = onWarning;
     this.objects = [];
     this.byPlacementId = new Map();
+    this.debrisObjects = [];
     this.isDestroyed = false;
 
     const placements = room.roomLayout?.placements ?? [];
     for (const placement of placements) this.createPlacement(placement);
+  }
+
+  readSavedState(placement, definition) {
+    if (!definition.destructible) return null;
+    const saved = this.roomState?.getEnvironmentalObjectState?.(placement.id);
+    if (!saved || (saved.definitionId && saved.definitionId !== definition.id)) return null;
+    const maxHealth = Number.isFinite(saved.maxHealth) && saved.maxHealth > 0
+      ? saved.maxHealth
+      : definition.destructible.maxHealth;
+    const health = Number.isFinite(saved.health)
+      ? Math.max(0, Math.min(maxHealth, saved.health))
+      : maxHealth;
+    return { maxHealth, health, destroyed: Boolean(saved.destroyed || health <= 0) };
+  }
+
+  persistInstanceState(instance) {
+    if (!instance.definition.destructible || !this.roomState?.setEnvironmentalObjectState) return;
+    this.roomState.setEnvironmentalObjectState(instance.placement.id, {
+      definitionId: instance.definition.id,
+      health: instance.health,
+      maxHealth: instance.maxHealth,
+      destroyed: instance.isDestroyed,
+    });
   }
 
   createPlacement(placement) {
@@ -48,8 +87,13 @@ export default class RoomEnvironmentRuntime {
       return null;
     }
 
+    const saved = this.readSavedState(placement, definition);
+    const destructible = definition.destructible;
+    const maxHealth = destructible ? (saved?.maxHealth ?? destructible.maxHealth) : null;
+    const health = destructible ? (saved?.health ?? maxHealth) : null;
+    const isDestroyed = Boolean(destructible && (saved?.destroyed || health <= 0));
+    const visual = visualForState(definition, health, maxHealth, isDestroyed);
     const { x, y, width, height, rotation = 0 } = placement;
-    const visual = definition.visual;
     const gameObject = visual.shape === "ellipse"
       ? this.scene.add.ellipse(x, y, width, height, visual.fillColor, visual.alpha)
       : this.scene.add.rectangle(x, y, width, height, visual.fillColor, visual.alpha);
@@ -60,7 +104,7 @@ export default class RoomEnvironmentRuntime {
     gameObject.setDepth?.(visual.depth);
 
     const collision = definition.collision;
-    if (collision.mode !== "none") {
+    if (collision.mode !== "none" && !isDestroyed) {
       const bodyOptions = {
         isStatic: true,
         isSensor: collision.mode === "sensor",
@@ -83,17 +127,28 @@ export default class RoomEnvironmentRuntime {
       placementId: placement.id,
       definitionId: definition.id,
       category: definition.category,
-      blocksMovement: collision.blocksMovement,
-      blocksProjectiles: collision.blocksProjectiles,
-      collisionMode: collision.mode,
+      blocksMovement: isDestroyed ? false : collision.blocksMovement,
+      blocksProjectiles: isDestroyed ? false : collision.blocksProjectiles,
+      collisionMode: isDestroyed ? "none" : collision.mode,
       hazard: definition.hazard,
-      definition,
+      destructible: Boolean(destructible),
+      health,
+      maxHealth,
+      isDestroyed,
       lastContactAt: new WeakMap(),
     };
     gameObject.environmentalObject = runtimeData;
     gameObject.environmentPlacementId = placement.id;
 
-    const instance = { gameObject, placement, definition, runtimeData };
+    const instance = {
+      gameObject,
+      placement,
+      definition,
+      runtimeData,
+      health,
+      maxHealth,
+      isDestroyed,
+    };
     this.objects.push(instance);
     this.byPlacementId.set(placement.id, instance);
     return instance;
@@ -103,6 +158,129 @@ export default class RoomEnvironmentRuntime {
     return this.objects.map(instance => instance.gameObject).filter(object => object?.active !== false);
   }
 
+  getInstance(target) {
+    if (typeof target === "string") return this.byPlacementId.get(target) ?? null;
+    if (!target) return null;
+    const placementId = target.environmentPlacementId ?? target.environmentalObject?.placementId;
+    return placementId ? (this.byPlacementId.get(placementId) ?? null) : null;
+  }
+
+  updateVisual(instance, destroyed = false) {
+    const visual = visualForState(
+      instance.definition,
+      instance.health,
+      instance.maxHealth,
+      destroyed,
+    );
+    const object = instance.gameObject;
+    object.setFillStyle?.(visual.fillColor, visual.alpha);
+    if (visual.alpha !== undefined) object.setAlpha?.(visual.alpha);
+    if (typeof object.setStrokeStyle === "function" && visual.strokeWidth > 0) {
+      object.setStrokeStyle(visual.strokeWidth, visual.strokeColor, 1);
+    }
+    return visual;
+  }
+
+  spawnDebris(instance) {
+    const settings = instance.definition.destructible?.debris;
+    if (!settings?.count || typeof this.scene.add.rectangle !== "function") return;
+    const { x, y } = instance.placement;
+    const offsets = [
+      [-0.32, -0.24], [0.28, -0.30], [-0.12, 0.34], [0.36, 0.18], [-0.38, 0.16], [0.02, -0.42], [0.16, 0.43], [-0.04, 0.08],
+    ];
+    for (let index = 0; index < settings.count; index++) {
+      const [offsetX, offsetY] = offsets[index % offsets.length];
+      const fragment = this.scene.add.rectangle(
+        x + offsetX * instance.placement.width,
+        y + offsetY * instance.placement.height,
+        settings.size,
+        settings.size * (index % 2 ? 0.65 : 1),
+        settings.color,
+        0.95,
+      );
+      fragment.setDepth?.(instance.definition.visual.depth + 1);
+      this.debrisObjects.push(fragment);
+      if (this.scene.tweens?.add) {
+        this.scene.tweens.add({
+          targets: fragment,
+          x: fragment.x + offsetX * 28,
+          y: fragment.y + offsetY * 28,
+          alpha: 0,
+          scaleX: 0.25,
+          scaleY: 0.25,
+          duration: settings.durationMs,
+          onComplete: () => {
+            fragment.destroy?.();
+            this.debrisObjects = this.debrisObjects.filter(item => item !== fragment);
+          },
+        });
+      }
+    }
+  }
+
+  removeCollision(instance) {
+    const object = instance.gameObject;
+    if (typeof object.setSensor === "function") object.setSensor(true);
+    else if (object.body) object.body.isSensor = true;
+    if (object.body) object.body.isSensor = true;
+    instance.runtimeData.blocksMovement = false;
+    instance.runtimeData.blocksProjectiles = false;
+    instance.runtimeData.collisionMode = "none";
+    instance.runtimeData.hazard = null;
+  }
+
+  destroyInstance(instance) {
+    if (instance.isDestroyed) return false;
+    instance.health = 0;
+    instance.isDestroyed = true;
+    instance.runtimeData.health = 0;
+    instance.runtimeData.isDestroyed = true;
+    this.removeCollision(instance);
+    this.updateVisual(instance, true);
+    this.spawnDebris(instance);
+    this.persistInstanceState(instance);
+    return true;
+  }
+
+  applyDamageToObject(target, context = {}) {
+    const instance = this.getInstance(target);
+    if (!instance || instance.isDestroyed || !instance.definition.destructible || instance.gameObject.active === false) {
+      return { applied: false, destroyed: Boolean(instance?.isDestroyed), health: instance?.health ?? null, damage: 0 };
+    }
+    const baseDamage = context.baseDamage;
+    if (!Number.isFinite(baseDamage) || baseDamage <= 0) {
+      return { applied: false, destroyed: false, health: instance.health, damage: 0 };
+    }
+
+    const config = instance.definition.destructible;
+    const damageType = typeof context.type === "string" ? context.type : "";
+    const multiplier = config.damageMultipliers[damageType] ?? config.defaultDamageMultiplier;
+    const damage = baseDamage * multiplier;
+    if (!Number.isFinite(damage) || damage <= 0) {
+      return { applied: false, destroyed: false, health: instance.health, damage: 0, multiplier };
+    }
+
+    const previousHealth = instance.health;
+    instance.health = Math.max(0, previousHealth - damage);
+    instance.runtimeData.health = instance.health;
+    const destroyed = instance.health <= 0;
+    if (destroyed) {
+      this.destroyInstance(instance);
+    } else {
+      this.updateVisual(instance, false);
+      this.persistInstanceState(instance);
+    }
+    return {
+      applied: true,
+      destroyed,
+      damage,
+      previousHealth,
+      health: instance.health,
+      maxHealth: instance.maxHealth,
+      multiplier,
+    };
+  }
+
   destroy() {
     if (this.isDestroyed) return;
     this.isDestroyed = true;
@@ -110,6 +288,8 @@ export default class RoomEnvironmentRuntime {
       const gameObject = instance.gameObject;
       if (gameObject?.active !== false) gameObject?.destroy?.();
     }
+    for (const fragment of this.debrisObjects) fragment?.destroy?.();
+    this.debrisObjects = [];
     this.objects = [];
     this.byPlacementId.clear();
   }

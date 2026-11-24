@@ -1,5 +1,6 @@
 const DamageType = Object.freeze ({
   PHYSICAL: 'physical',
+  KINETIC: 'kinetic',
   FIRE: 'fire',
   ICE: 'ice',
   POISON: 'poison',
