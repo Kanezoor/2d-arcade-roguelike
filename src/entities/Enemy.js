@@ -41,6 +41,26 @@ export default class Enemy {
     this.lastBurst = 0;
     
     this.behavior = config.behavior ?? 'chase';
+    const coverConfig = config.coverTactics && typeof config.coverTactics === "object"
+      ? config.coverTactics
+      : {};
+    this.usesCover = coverConfig.enabled === true;
+    this.coverAIConfig = {
+      enemyRadius: coverConfig.enemyRadius ?? 18,
+      clearance: coverConfig.clearance ?? 16,
+      peekClearance: coverConfig.peekClearance ?? 22,
+      arrivalDistance: coverConfig.arrivalDistance ?? 14,
+      hideDurationMs: coverConfig.hideDurationMs ?? 650,
+      searchRetryMs: coverConfig.searchRetryMs ?? 1100,
+      burstShots: coverConfig.burstShots ?? this.burstShots ?? 2,
+      burstDelayMs: coverConfig.burstDelayMs ?? this.burstDelay ?? 180,
+    };
+    this.coverAIState = this.usesCover ? "searching" : null;
+    this.coverPlan = null;
+    this.coverAITimer = 0;
+    this.coverBurstRemaining = 0;
+    this.coverBurstTimer = 0;
+    this.nextCoverSearchAt = 0;
     this.chargeTriggerDistance = config.chargeTriggerDistance ?? 300;
     this.chargeTelegraphTime = config.chargeTelegraphTime ?? 600;
     this.chargeCooldown = config.chargeCooldown ?? 1800;
@@ -69,6 +89,13 @@ export default class Enemy {
 
   fireBurstShot() {
     const player = this.scene.player.sprite;
+    const environment = this.scene.roomManager?.roomEnvironment;
+    if (environment?.hasLineOfSight && !environment.hasLineOfSight(
+      { x: this.sprite.x, y: this.sprite.y },
+      { x: player.x, y: player.y },
+    )) {
+      return false;
+    }
 
     const angle = Phaser.Math.Angle.Between(
       this.sprite.x,
@@ -95,7 +122,7 @@ export default class Enemy {
       50,
       0,
     );
-
+    return true;
   }
 
   updateBurst() {

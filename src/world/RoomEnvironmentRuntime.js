@@ -1,4 +1,10 @@
 import { createDefaultEnvironmentalObjectRegistry } from "./EnvironmentalObjectRegistry.js";
+import { isPointInsideRoom } from "./RoomGeometry.js";
+import {
+  getEnvironmentalObjectSupportRadius,
+  pointOverlapsEnvironmentalObject,
+  segmentIntersectsEnvironmentalObject,
+} from "./CoverGeometry.js";
 
 function isValidPlacement(placement) {
   return placement &&
@@ -163,6 +169,123 @@ export default class RoomEnvironmentRuntime {
     if (!target) return null;
     const placementId = target.environmentPlacementId ?? target.environmentalObject?.placementId;
     return placementId ? (this.byPlacementId.get(placementId) ?? null) : null;
+  }
+
+  getCoverInstances() {
+    return this.objects.filter(instance => {
+      const category = instance.definition.category;
+      return instance.gameObject?.active !== false &&
+        !instance.isDestroyed &&
+        instance.runtimeData.blocksMovement &&
+        instance.runtimeData.blocksProjectiles &&
+        (category === "cover" || category === "wall");
+    });
+  }
+
+  isCoverAvailable(placementId) {
+    const instance = this.getInstance(placementId);
+    return Boolean(instance && !instance.isDestroyed &&
+      instance.gameObject?.active !== false &&
+      instance.runtimeData.blocksMovement && instance.runtimeData.blocksProjectiles &&
+      (instance.definition.category === "cover" || instance.definition.category === "wall"));
+  }
+
+  hasLineOfSight(start, end, { ignorePlacementId = null } = {}) {
+    if (!start || !end || ![start.x, start.y, end.x, end.y].every(Number.isFinite)) return false;
+    return !this.objects.some(instance => {
+      if (instance.placement.id === ignorePlacementId || instance.gameObject?.active === false) return false;
+      if (!instance.runtimeData.blocksProjectiles || instance.runtimeData.collisionMode === "none") return false;
+      return segmentIntersectsEnvironmentalObject(start, end, instance);
+    });
+  }
+
+  isPositionClear(x, y, padding = 18, { ignorePlacementId = null } = {}) {
+    if (![x, y, padding].every(Number.isFinite) || padding < 0) return false;
+    const point = { x, y };
+    return !this.objects.some(instance => {
+      if (instance.placement.id === ignorePlacementId || instance.gameObject?.active === false) return false;
+      if (!instance.runtimeData.blocksMovement || instance.runtimeData.collisionMode === "none") return false;
+      return pointOverlapsEnvironmentalObject(point, padding, instance);
+    });
+  }
+
+  findCoverPosition(enemyPosition, playerPosition, { enemyRadius = 18, clearance = 16 } = {}) {
+    if (!enemyPosition || !playerPosition) return null;
+    const candidates = [];
+
+    for (const instance of this.getCoverInstances()) {
+      const center = { x: instance.placement.x, y: instance.placement.y };
+      const dx = center.x - playerPosition.x;
+      const dy = center.y - playerPosition.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < 1) continue;
+      const directionX = dx / distance;
+      const directionY = dy / distance;
+      const support = getEnvironmentalObjectSupportRadius(instance, directionX, directionY);
+      const offset = support + enemyRadius + clearance;
+      const hidePosition = {
+        x: center.x + directionX * offset,
+        y: center.y + directionY * offset,
+      };
+
+      if (!isPointInsideRoom(this.room, hidePosition.x, hidePosition.y, enemyRadius + 4)) continue;
+      if (!this.isPositionClear(hidePosition.x, hidePosition.y, enemyRadius)) continue;
+      if (!segmentIntersectsEnvironmentalObject(playerPosition, hidePosition, instance)) continue;
+      if (!this.hasLineOfSight(enemyPosition, hidePosition)) continue;
+
+      candidates.push({
+        placementId: instance.placement.id,
+        instance,
+        hidePosition,
+        distanceFromEnemy: Math.hypot(hidePosition.x - enemyPosition.x, hidePosition.y - enemyPosition.y),
+      });
+    }
+
+    candidates.sort((a, b) => a.distanceFromEnemy - b.distanceFromEnemy);
+    return candidates[0] ?? null;
+  }
+
+  findPeekPosition(placementId, playerPosition, {
+    fromPosition = null,
+    enemyRadius = 18,
+    clearance = 22,
+  } = {}) {
+    const instance = this.getInstance(placementId);
+    if (!instance || !this.isCoverAvailable(placementId) || !playerPosition) return null;
+
+    const center = { x: instance.placement.x, y: instance.placement.y };
+    const towardEnemyX = center.x - playerPosition.x;
+    const towardEnemyY = center.y - playerPosition.y;
+    const baseAngle = Math.atan2(towardEnemyY, towardEnemyX);
+    const offsets = [65, -65, 80, -80, 95, -95, 110, -110, 125, -125];
+    const candidates = [];
+
+    for (const offsetDegrees of offsets) {
+      const angle = baseAngle + offsetDegrees * Math.PI / 180;
+      const directionX = Math.cos(angle);
+      const directionY = Math.sin(angle);
+      const support = getEnvironmentalObjectSupportRadius(instance, directionX, directionY);
+      const distance = support + enemyRadius + clearance;
+      const position = {
+        x: center.x + directionX * distance,
+        y: center.y + directionY * distance,
+      };
+
+      if (!isPointInsideRoom(this.room, position.x, position.y, enemyRadius + 4)) continue;
+      if (!this.isPositionClear(position.x, position.y, enemyRadius)) continue;
+      if (!this.hasLineOfSight(playerPosition, position)) continue;
+      if (fromPosition && !this.hasLineOfSight(fromPosition, position)) continue;
+
+      candidates.push({
+        ...position,
+        distanceFromStart: fromPosition
+          ? Math.hypot(position.x - fromPosition.x, position.y - fromPosition.y)
+          : 0,
+      });
+    }
+
+    candidates.sort((a, b) => a.distanceFromStart - b.distanceFromStart);
+    return candidates[0] ? { x: candidates[0].x, y: candidates[0].y } : null;
   }
 
   updateVisual(instance, destroyed = false) {

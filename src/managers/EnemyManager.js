@@ -3,6 +3,7 @@ import DamageSystem from "../combat/DamageSystem.js";
 import DamageContext from "../combat/DamageContext.js";
 import DamageType from "../combat/DamageType.js";
 import { isPointInsideRoom } from "../world/RoomGeometry.js";
+import { updateCoverCombatAI } from "../ai/CoverCombatAI.js";
 
 export function isSpawnPositionClear(scene, x, y, padding = 42) {
   const objects = scene.roomManager?.roomEnvironment?.getGameObjects?.() ?? [];
@@ -106,6 +107,13 @@ export function spawnEnemy(scene, enemyType = null) {
       burstDelay: 150,
       burstCooldown: 1500,
       repositionTime: 500,
+      coverTactics: {
+        enabled: true,
+        hideDurationMs: 650,
+        searchRetryMs: 1100,
+        burstShots: 2,
+        burstDelayMs: 180,
+      },
       xp: 30,
       hitReactionDistance: 10,
       hitPushDuration: 50,
@@ -176,6 +184,13 @@ export function updateEnemies(scene) {
   scene.enemies.getChildren().forEach(sprite => {
 
     const enemy = sprite.enemy;
+    if (!enemy || enemy.isDead || sprite.active === false) return;
+
+    // Only explicitly configured ranged archetypes use cover. If no suitable
+    // cover exists, the helper returns false and the legacy AI remains active.
+    if (enemy.usesCover && updateCoverCombatAI(enemy, scene)) {
+      return;
+    }
 
     if (enemy.behavior === 'charger') {
       enemy.updateCharger();
